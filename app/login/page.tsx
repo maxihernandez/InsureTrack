@@ -1,0 +1,4 @@
+import Link from "next/link";
+import { login } from "./actions";
+export const instant = false;
+export default async function Login({searchParams}:{searchParams:Promise<{error?:string}>}) { const {error}=await searchParams; return <main className="mx-auto flex min-h-screen max-w-md items-center p-6"><form action={login} className="w-full space-y-4 rounded-xl border p-6"><h1 className="text-2xl font-semibold">PolicyBoard</h1>{error&&<p className="text-sm text-red-700">Invalid credentials or temporary lock.</p>}<input className="w-full rounded border p-3" name="email" type="email" placeholder="Email" required/><input className="w-full rounded border p-3" name="password" type="password" placeholder="Password" required/><button className="w-full rounded bg-zinc-900 p-3 text-white">Sign in</button><Link className="block text-center text-sm underline" href="/setup">First manager setup</Link></form></main>; }

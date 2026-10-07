@@ -72,7 +72,7 @@ export async function updateAgent(form: FormData) {
   if (!isUuid(id) || !profile) redirect(`${path}?error=invalid`);
   try {
     await withTransaction(async tx => {
-      const rows = await tx<{ email: string; username: string | null }[]>`
+      const rows = await tx<{ email: string | null; username: string | null }[]>`
         select u.email, u.username from policyboard.users u join policyboard.roles r on r.id = u.role_id
         where u.id = ${id} and r.code = 'agent' for update of u
       `;

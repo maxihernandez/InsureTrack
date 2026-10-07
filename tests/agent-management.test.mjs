@@ -62,6 +62,18 @@ test("password validation checks length and confirmation without trimming", () =
   assert.equal(validation.readAgentPassword(form({ password: " 1234567890 ", password_confirmation: " 1234567890 " })), " 1234567890 ");
 });
 
+test("agent email is optional but provided contact addresses are validated", () => {
+  for (const autoUsername of [false, true]) {
+    const withoutEmail = form(); withoutEmail.delete("email");
+    assert.equal(validation.readAgentProfile(withoutEmail, autoUsername).email, null);
+    assert.equal(validation.readAgentProfile(form({ email: " " }), autoUsername).email, null);
+    assert.equal(validation.readAgentProfile(form({ email: "invalid" }), autoUsername), null);
+    assert.equal(validation.readAgentProfile(form({ email: "x".repeat(255) }), autoUsername), null);
+  }
+  assert.equal(validation.previewUsername("Maximiliano", "Hernández", ["Mhernandez", "mhernandez1"]), "mhernandez2");
+  assert.equal(validation.previewUsername("", "Hernández", []), "");
+});
+
 test("generated usernames normalize names, reserve suffix space and respect format", () => {
   assert.equal(validation.usernameBase("Maximiliano", "Hernández"), "mhernandez");
   assert.equal(validation.usernameBase(" María ", "De la Cruz"), "mdelacruz");
@@ -244,6 +256,7 @@ test("integration: real agent lifecycle, duplicates and revoked sessions, rolled
   const email = `policyboard-test-${require("node:crypto").randomUUID()}@example.invalid`;
   const lastName = `Lifecycle${require("node:crypto").randomBytes(8).toString("hex")}`;
   const username = validation.usernameBase("Ana", lastName);
+  const noEmailUsername = validation.usernameBase("NoEmail", lastName);
   const rollback = new Error("intentional-test-rollback");
   try {
     await assert.rejects(database.withTransaction(async tx => {
@@ -283,6 +296,13 @@ test("integration: real agent lifecycle, duplicates and revoked sessions, rolled
         await assert.rejects(actions.createAgent(form({ email: otherEmail, last_name: lastName, username: "ignored" })), to("/team/manage?saved=created"));
         const [other] = await tx`select username from policyboard.users where email = ${otherEmail}`;
         assert.equal(other.username, `${username}${number}`);
+      }
+      for (const number of [0, 1]) {
+        await assert.rejects(actions.createAgent(form({ email: "", first_name: "NoEmail", last_name: lastName })), to("/team/manage?saved=created"));
+        const candidate = validation.usernameCandidate(noEmailUsername, number);
+        const [withoutEmail] = await tx`select id, email from policyboard.users where username = ${candidate}`;
+        assert.equal(withoutEmail.email, null);
+        await assert.rejects(actions.updateAgent(form({ id: withoutEmail.id, email: "", username: candidate })), to("/team/manage?saved=updated"));
       }
       const [lookup] = await tx`select id from policyboard.users where lower(username) = ${username.toUpperCase().toLowerCase()}`;
       assert.equal(lookup.id, agent.id);
@@ -339,6 +359,9 @@ test("integration: real agent lifecycle, duplicates and revoked sessions, rolled
     const [remaining] = await sql`select count(*)::int as count from policyboard.users
       where email in (${email}, ${`other1-${email}`}, ${`other2-${email}`})`;
     assert.equal(remaining.count, 0);
+    const [noEmailRemaining] = await sql`select count(*)::int as count from policyboard.users
+      where username in (${noEmailUsername}, ${`${noEmailUsername}1`})`;
+    assert.equal(noEmailRemaining.count, 0);
     await database.withTransaction(async tx => { const [row] = await tx`select 1 as value`; assert.equal(row.value, 1); });
   } finally { await sql.end({ timeout: 2 }); }
 });

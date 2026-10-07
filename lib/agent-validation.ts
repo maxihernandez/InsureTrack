@@ -14,14 +14,25 @@ export function usernameCandidate(base: string, number: number) {
   return `${base.slice(0, 32 - suffix.length)}${suffix}`;
 }
 
+export function previewUsername(firstName: string, lastName: string, existing: string[]) {
+  const base = usernameBase(firstName, lastName);
+  if (!base) return "";
+  const used = new Set(existing.map(username => username.toLowerCase()));
+  for (let number = 0; number < 10_000; number++) {
+    const candidate = usernameCandidate(base, number);
+    if (!used.has(candidate)) return candidate;
+  }
+  return "";
+}
+
 export function readAgentProfile(form: FormData, autoUsername = false) {
   const firstName = String(form.get("first_name") ?? "").trim();
   const lastName = String(form.get("last_name") ?? "").trim();
   const email = String(form.get("email") ?? "").trim().toLowerCase();
   const username = autoUsername ? usernameBase(firstName, lastName) : parseUsername(form.get("username"));
   if (!firstName || firstName.length > 100 || !lastName || lastName.length > 100 ||
-      !username || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null;
-  return { firstName, lastName, email, username };
+      !username || email.length > 254 || (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) return null;
+  return { firstName, lastName, email: email || null, username };
 }
 
 export function readAgentPassword(form: FormData) {

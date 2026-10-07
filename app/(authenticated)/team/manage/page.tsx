@@ -5,10 +5,11 @@ import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { createAgent, resetAgentPassword, setAgentStatus, setAgentManagerAccess, updateAgent } from "./actions";
 import { SubmitButton } from "./submit-button";
+import { ProfileFields } from "./profile-fields";
 
 export const instant = false;
 
-type Agent = { id: string; email: string; username: string | null; active: boolean; manager_access: boolean; first_name: string; last_name: string };
+type Agent = { id: string; email: string | null; username: string | null; active: boolean; manager_access: boolean; first_name: string; last_name: string };
 const inputClass = "mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2";
 const errors: Record<string, string> = {
   invalid: "Complete all fields correctly. Username: 3–32 letters, digits, dots, underscores or hyphens, starting with a letter/digit. Passwords must match and contain 12–128 characters.",
@@ -26,15 +27,6 @@ const messages: Record<string, string> = {
   "manager-disabled": "Manager access removed and sessions revoked. Agent access is preserved.",
 };
 
-function ProfileFields({ agent }: { agent?: Agent }) {
-  return <div className="grid gap-3 sm:grid-cols-2">
-    <label className="text-sm font-medium">First name<input name="first_name" required maxLength={100} autoComplete="given-name" defaultValue={agent?.first_name} className={inputClass} /></label>
-    <label className="text-sm font-medium">Last name<input name="last_name" required maxLength={100} autoComplete="family-name" defaultValue={agent?.last_name} className={inputClass} /></label>
-    {agent ? <label className="text-sm font-medium sm:col-span-2">Username<input name="username" required minLength={3} maxLength={32} pattern="[A-Za-z0-9][A-Za-z0-9._\-]{2,31}" autoComplete="off" autoCapitalize="none" spellCheck={false} defaultValue={agent.username ?? ""} className={inputClass} /><span className="mt-1 block text-xs font-normal text-zinc-500">3–32 characters. Letters, digits, dots, underscores or hyphens. Case-insensitive.</span></label> : <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 sm:col-span-2">Username is generated automatically: first initial + full last name, without spaces or accents. If taken, a number is added: mhernandez, mhernandez1, mhernandez2. The assigned username appears in the agent list after saving.</p>}
-    <label className="text-sm font-medium sm:col-span-2">Email<input name="email" type="email" required maxLength={254} autoComplete="off" defaultValue={agent?.email} className={inputClass} /></label>
-  </div>;
-}
-
 function PasswordFields() {
   return <div className="grid gap-3 sm:grid-cols-2">
     <label className="text-sm font-medium">Password<input name="password" type="password" required minLength={12} maxLength={128} autoComplete="new-password" className={inputClass} /></label>
@@ -48,10 +40,14 @@ export default async function ManageAgents({ searchParams }: { searchParams: Pro
   if (!user) redirect("/login");
   if (user.role !== "manager") redirect("/team");
   const params = await searchParams;
-  const agents = await getDb()<Agent[]>`select u.id, u.email, u.username, u.active, u.manager_access, p.first_name, p.last_name
+  const sql = getDb();
+  const [agents, reserved] = await Promise.all([
+    sql<Agent[]>`select u.id, u.email, u.username, u.active, u.manager_access, p.first_name, p.last_name
     from policyboard.users u join policyboard.roles r on r.id = u.role_id
     join policyboard.profiles p on p.user_id = u.id where r.code = 'agent'
-    order by u.active desc, p.first_name, p.last_name, u.id`;
+    order by u.active desc, p.first_name, p.last_name, u.id`,
+    sql<{ username: string }[]>`select lower(username) as username from policyboard.users where username is not null`,
+  ]);
   return <>
     <Link href="/team" className="text-sm font-medium text-emerald-800">← Team</Link>
     <div className="mb-6 mt-3"><h1 className="text-2xl font-semibold">Manage agents</h1>
@@ -61,7 +57,7 @@ export default async function ManageAgents({ searchParams }: { searchParams: Pro
     <section className="mb-8 rounded-xl border border-zinc-200 bg-white p-5">
       <h2 className="mb-4 text-lg font-semibold">Create agent</h2>
       <form action={createAgent} className="space-y-4">
-        <ProfileFields /><PasswordFields />
+        <ProfileFields key={reserved.length} reservedUsernames={reserved.map(row => row.username)} /><PasswordFields />
         <p className="text-sm text-zinc-600">12–128 characters. Share credentials through a secure channel. The password is never displayed after saving.</p>
         <SubmitButton>Create agent</SubmitButton>
       </form>

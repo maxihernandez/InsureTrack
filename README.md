@@ -23,6 +23,10 @@ Set `DATABASE_URL` in Vercel's server environment variables. The database schema
 
 Run `npm run lint` and `npm run build` before deployment. The manifest and icons prepare the UI for installation; offline caching and push notifications are not implemented.
 
+## Historical reports
+
+**Reports** (`/history`, existing URL preserved) summarizes the 12 months ending in the selected month; by default it ends in the previous month. It shows sales versus goals, monthly premium, product mix, agent contribution, summary cards and exact monthly values with dashboard drill-down links. Inactive agents/products remain included in historical sales. Months with no sales are represented as zero; missing goals remain null. Goal achievement only counts sales from product/month pairs with positive targets. Sales after today are excluded, and incomplete/future ranges are explicitly labeled. Existing team-report visibility is unchanged. Goals reflect the currently stored values: this MVP does not preserve immutable snapshots of edited historical goals. Charts are server-rendered SVG/HTML with no new browser library or database schema change.
+
 ## Agent management
 
 Managers open **Team → Manage agents** (`/team/manage`) to create agents, edit their username/names/email, activate/deactivate them, or reset passwords. Active agents appear in Production automatically. All mutations check the manager role server-side and restrict targets to the agent role.

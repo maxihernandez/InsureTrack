@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test tests/agent-management.test.mjs"
+    "test": "node --test tests/agent-management.test.mjs tests/app-shell.test.mjs tests/dashboard-steps.test.mjs tests/reports.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

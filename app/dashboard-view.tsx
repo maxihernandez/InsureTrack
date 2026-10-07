@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { parsePeriod } from "@/lib/period";
+import { DashboardSteps } from "@/app/dashboard-steps";
 
 type ProductProgress = { id: string; name: string; target_count: number | null; target_amount: string | null; mtd_count: number; ytd_count: number; mtd_premium: string; ytd_premium: string; mtd_amount: string };
 type Ranking = { id: string; name: string; mtd_count: number; ytd_count: number };
@@ -76,7 +77,7 @@ export async function DashboardView({ searchParams, history = false }: { searchP
     <section aria-label="Summary" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {[{ label: "MTD sales", value: mtd }, { label: "Monthly goal", value: goal }, { label: "YTD sales", value: ytd }, { label: "MTD premium", value: money(premium) }].map(item => <div key={item.label} className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm"><p className="text-sm text-zinc-600">{item.label}</p><p className="mt-1 text-2xl font-semibold">{item.value}</p></div>)}
     </section>
-    <section className="mt-8"><div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">Product goals</h2>{user.role === "manager" && <Link className="text-sm font-medium text-emerald-700 hover:underline" href={`/goals?period=${periodValue}`}>Edit goals</Link>}</div>
+    <DashboardSteps key={periodValue} enabled={!history} production={<section className={history ? "mt-8" : ""}><div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">Product goals</h2>{user.role === "manager" && <Link className="text-sm font-medium text-emerald-700 hover:underline" href={`/goals?period=${periodValue}`}>Edit goals</Link>}</div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{products.map(p => {
         const target = p.target_count;
         const shownActual = Math.min(p.mtd_count, 40);
@@ -90,10 +91,10 @@ export async function DashboardView({ searchParams, history = false }: { searchP
           {(p.mtd_count > 40 || (target !== null && target > 40)) && <p className="mt-1 text-xs text-zinc-500">Showing up to 40 markers.</p>}
         </article>;
       })}</div>
-    </section>
-    <div className="mt-8 grid gap-6 lg:grid-cols-2">
+    </section>} ranking={
       <section><h2 className="mb-3 text-lg font-semibold">Team ranking · MTD</h2><div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">{ranking.length ? ranking.map((agent, index) => <div key={agent.id} className="flex items-center justify-between border-b border-zinc-100 px-4 py-3 last:border-0"><p><span className="mr-3 text-zinc-500">{index + 1}.</span>{agent.name}</p><p className="text-sm font-medium">{agent.mtd_count} MTD <span className="text-zinc-500">· {agent.ytd_count} YTD</span></p></div>) : <p className="p-4 text-sm text-zinc-600">No active agents yet.</p>}</div></section>
+    } commercial={
       <section><h2 className="mb-3 text-lg font-semibold">Commercial activity · MTD</h2><div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">{activities.length ? activities.map(a => <div key={a.metric_type} className="flex justify-between border-b border-zinc-100 px-4 py-3 last:border-0"><span>{a.metric_type}</span><span className="font-medium">{a.value}{a.target === null ? "" : ` / ${a.target}`}</span></div>) : <p className="p-4 text-sm text-zinc-600">No activity metrics for this month.</p>}</div></section>
-    </div>
+    } />
   </>;
 }

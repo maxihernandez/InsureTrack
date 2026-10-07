@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser, hashPassword } from "@/lib/auth";
 import { withTransaction } from "@/lib/db";
 import { isUuid } from "@/lib/validation";
-import { readAgentPassword, readAgentProfile } from "@/lib/agent-validation";
+import { readAgentPassword, readAgentProfile, usernameCandidate } from "@/lib/agent-validation";
 
 const path = "/team/manage";
 
@@ -13,6 +13,7 @@ async function requireManager() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (user.role !== "manager") redirect("/team");
+  return user;
 }
 
 function fail(error: unknown): never {
@@ -33,20 +34,32 @@ function finish(message: string) {
 
 export async function createAgent(form: FormData) {
   await requireManager();
-  const profile = readAgentProfile(form);
+  const profile = readAgentProfile(form, true);
   const password = readAgentPassword(form);
   if (!profile || !password) redirect(`${path}?error=invalid`);
   try {
     const hash = await hashPassword(password);
     await withTransaction(async tx => {
-      const rows = await tx<{ id: string }[]>`
-        insert into policyboard.users (email, username, role_id, password_hash, password_updated_at, must_change_password, active)
-        select ${profile.email}, ${profile.username}, id, ${hash}, now(), false, true from policyboard.roles where code = 'agent'
-        returning id
-      `;
-      if (!rows[0]) throw new Error("agent-role-missing");
+      const roles = await tx<{ id: number }[]>`select id from policyboard.roles where code = 'agent'`;
+      if (!roles[0]) throw new Error("agent-role-missing");
+      const existing = await tx<{ username: string }[]>`select lower(username) as username from policyboard.users where username is not null`;
+      const used = new Set(existing.map(row => row.username));
+      let agentId: string | undefined;
+      for (let number = 0; number < 10_000; number++) {
+        const username = usernameCandidate(profile.username, number);
+        if (used.has(username)) continue;
+        const rows = await tx<{ id: string }[]>`
+          insert into policyboard.users (email, username, role_id, password_hash, password_updated_at, must_change_password, active)
+          values (${profile.email}, ${username}, ${roles[0].id}, ${hash}, now(), false, true)
+          on conflict (lower(username)) where username is not null do nothing returning id
+        `;
+        if (rows[0]) { agentId = rows[0].id; break; }
+        // A concurrent request claimed this candidate. Try the next suffix.
+        used.add(username);
+      }
+      if (!agentId) throw new Error("username-allocation-exhausted");
       await tx`insert into policyboard.profiles (user_id, first_name, last_name)
-        values (${rows[0].id}, ${profile.firstName}, ${profile.lastName})`;
+        values (${agentId}, ${profile.firstName}, ${profile.lastName})`;
     });
   } catch (error) { fail(error); }
   finish("created");
@@ -112,4 +125,31 @@ export async function resetAgentPassword(form: FormData) {
     });
   } catch (error) { fail(error); }
   finish("password");
+}
+
+export async function setAgentManagerAccess(form: FormData) {
+  const actor = await requireManager();
+  const id = String(form.get("id") ?? "");
+  const access = String(form.get("access") ?? "");
+  if (!isUuid(id) || id === actor.id || !["enabled", "disabled"].includes(access) || form.get("confirm") !== "yes") {
+    redirect(`${path}?error=invalid`);
+  }
+  const enabled = access === "enabled";
+  try {
+    await withTransaction(async tx => {
+      const rows = await tx`update policyboard.users u set manager_access = ${enabled}
+        from policyboard.roles r
+        where u.id = ${id} and r.id = u.role_id and r.code = 'agent'
+          and (not ${enabled} or u.active)
+          and exists (
+            select 1 from policyboard.users actor join policyboard.roles ar on ar.id = actor.role_id
+            where actor.id = ${actor.id} and actor.active
+              and (ar.code = 'manager' or (ar.code = 'agent' and actor.manager_access))
+          )
+        returning u.id`;
+      if (!rows.length) throw new Error("agent-not-found");
+      await tx`update policyboard.user_sessions set revoked_at = now() where user_id = ${id} and revoked_at is null`;
+    });
+  } catch (error) { fail(error); }
+  finish(enabled ? "manager-enabled" : "manager-disabled");
 }

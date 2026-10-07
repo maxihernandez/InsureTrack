@@ -11,6 +11,17 @@ export async function verifyPassword(value:string, stored:string) { const [kind,
 export async function createSession(userId:string) { const token=randomBytes(32).toString("base64url"); await getDb()`insert into policyboard.user_sessions (user_id,token_hash,expires_at) values (${userId},${hashSessionToken(token)},now()+interval '12 hours')`; (await cookies()).set("policyboard_session",token,{httpOnly:true,secure:process.env.NODE_ENV==="production",sameSite:"lax",path:"/",maxAge:43200}); }
 
 // Deduplicate layout/page checks only within one render, never across users or requests.
-export const getCurrentUser = cache(async function getCurrentUser() { const token=(await cookies()).get("policyboard_session")?.value; if(!token)return null; const rows=await getDb()<{id:string;first_name:string;role:string}[]>`select u.id,p.first_name,r.code as role from policyboard.user_sessions s join policyboard.users u on u.id=s.user_id join policyboard.profiles p on p.user_id=u.id join policyboard.roles r on r.id=u.role_id where s.token_hash=${hashSessionToken(token)} and s.revoked_at is null and s.expires_at>now() and u.active`; return rows[0]??null; });
+export const getCurrentUser = cache(async function getCurrentUser() {
+  const token = (await cookies()).get("policyboard_session")?.value;
+  if (!token) return null;
+  const rows = await getDb()<{ id: string; first_name: string; role: string; base_role: string }[]>`
+    select u.id, p.first_name, r.code as base_role,
+      case when r.code = 'agent' and u.manager_access then 'manager' else r.code end as role
+    from policyboard.user_sessions s join policyboard.users u on u.id = s.user_id
+    join policyboard.profiles p on p.user_id = u.id join policyboard.roles r on r.id = u.role_id
+    where s.token_hash = ${hashSessionToken(token)} and s.revoked_at is null and s.expires_at > now() and u.active
+  `;
+  return rows[0] ?? null;
+});
 
 export async function endSession() { const token=(await cookies()).get("policyboard_session")?.value; if(token) await getDb()`update policyboard.user_sessions set revoked_at=now() where token_hash=${hashSessionToken(token)} and revoked_at is null`; (await cookies()).delete("policyboard_session"); }

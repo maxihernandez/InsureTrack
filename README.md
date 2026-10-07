@@ -27,7 +27,11 @@ Run `npm run lint` and `npm run build` before deployment. The manifest and icons
 
 Managers open **Team → Manage agents** (`/team/manage`) to create agents, edit their username/names/email, activate/deactivate them, or reset passwords. Active agents appear in Production automatically. All mutations check the manager role server-side and restrict targets to the agent role.
 
+New agents receive an automatic username: first initial + full last name, normalized to lowercase ASCII without accents/spaces. Existing names are checked case-insensitively; collisions receive numeric suffixes (`mhernandez1`, `mhernandez2`). The unique index and insert retries also protect concurrent creations. Names are limited to 32 characters including the suffix; exceptionally short names are padded to three characters. Existing usernames are not regenerated when editing a profile; managers can explicitly edit them.
+
 Passwords require 12–128 characters and confirmation, and are stored as salted PBKDF2 hashes. Credentials are not emailed; share them through a secure channel. Initial/reset passwords are not one-time passwords, and this MVP does not yet force a first-login password change. Username/email changes, deactivation and password resets revoke existing sessions. Deactivation preserves historical production.
+
+**Manager access** can be enabled or removed for another agent from their account card, with explicit confirmation. The additive remote migration `policyboard_agent_manager_access` adds `users.manager_access` (not null, default false). The base agent role is unchanged, preserving production eligibility, ranking and history; session authorization resolves the effective manager role from the database on every request. Permission changes revoke sessions atomically and require signing in again. Only active agents can receive this permission; inactive agents can have it revoked. Managers cannot change their own manager access or modify the original manager's role through this form. Delegated managers have full manager permissions, including administration of other agents.
 
 Run `npm test` for validation, permission, transaction-flow and hashing tests. The real database lifecycle test is opt-in and rolls back its test data:
 

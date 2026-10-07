@@ -1,4 +1,4 @@
-import { DashboardView } from "./dashboard-view";
+import { DashboardView } from "@/app/dashboard-view";
 
 export const instant = false;
 

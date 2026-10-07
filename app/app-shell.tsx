@@ -1,9 +1,14 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { logout } from "@/app/login/actions";
 
 type User = { first_name: string; role: string };
 
-export function AppShell({ user, current, children }: { user: User; current: "dashboard" | "goals" | "production" | "team" | "history"; children: React.ReactNode }) {
+export function AppShell({ user, children }: { user: User; children: React.ReactNode }) {
+  const pathname = usePathname();
+  const current = pathname === "/" ? "dashboard" : pathname.split("/")[1];
   const links = [
     { href: "/", label: "Dashboard", key: "dashboard" },
     { href: "/production", label: "Production", key: "production" },

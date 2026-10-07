@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { revalidatePath } from "next/cache";
-import { AppShell } from "@/app/app-shell";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { parsePeriod } from "@/lib/period";
 import { isUuid } from "@/lib/validation";
 
 export const instant = false;
+
 
 type GoalRow = { id: string; goal_id: string | null; name: string; code: string; target_count: number | null; target_amount: string | null };
 
@@ -56,6 +57,7 @@ async function removeGoal(form: FormData) {
 }
 
 export default async function Goals({ searchParams }: { searchParams: Promise<{ period?: string; error?: string; saved?: string }> }) {
+  await connection();
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (user.role !== "manager") redirect("/");
@@ -69,7 +71,7 @@ export default async function Goals({ searchParams }: { searchParams: Promise<{ 
     where p.active
     order by p.display_order
   `;
-  return <AppShell user={user} current="goals">
+  return <>
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div><p className="text-sm font-medium text-emerald-700">Planning</p><h1 className="text-2xl font-semibold">Goals</h1><p className="text-sm text-zinc-600">Team targets for {period.label}</p></div>
       <form method="get" className="flex items-end gap-2"><label className="text-sm font-medium">Month<input name="period" type="month" min="2020-01" max="2100-12" defaultValue={periodValue} className="mt-1 block rounded-lg border border-zinc-300 bg-white px-3 py-2" /></label><button className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white">View</button></form>
@@ -85,5 +87,5 @@ export default async function Goals({ searchParams }: { searchParams: Promise<{ 
       </form>
       {goal.goal_id && <form action={removeGoal} className="mt-2"><input type="hidden" name="id" value={goal.goal_id}/><input type="hidden" name="period" value={periodValue}/><button className="text-sm text-red-700 hover:underline">Remove goal</button></form>}
     </article>)}</div>
-  </AppShell>;
+  </>;
 }

@@ -3,6 +3,7 @@ import { connection } from "next/server";
 
 export const instant = false;
 
+
 export default async function History({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
   const params = await searchParams;
   await connection();

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import Link from "next/link";
-import { AppShell } from "@/app/app-shell";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { parsePeriod } from "@/lib/period";
@@ -11,6 +11,7 @@ type Activity = { metric_type: string; value: number; target: number | null };
 const money = (value: string | number) => `$${Number(value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export async function DashboardView({ searchParams, history = false }: { searchParams: Promise<{ period?: string }>; history?: boolean }) {
+  await connection();
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const { period: rawPeriod } = await searchParams;
@@ -67,7 +68,7 @@ export async function DashboardView({ searchParams, history = false }: { searchP
   const ytd = products.reduce((total, p) => total + p.ytd_count, 0);
   const goal = products.reduce((total, p) => total + (p.target_count ?? 0), 0);
   const premium = products.reduce((total, p) => total + Number(p.mtd_premium), 0);
-  return <AppShell user={user} current={history ? "history" : "dashboard"}>
+  return <>
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div><p className="text-sm font-medium text-emerald-700">Team performance</p><h1 className="text-2xl font-semibold">{history ? "Monthly history" : "Dashboard"}</h1><p className="text-sm text-zinc-600">{period.label}</p></div>
       <form method="get" className="flex items-end gap-2"><label className="text-sm font-medium">Month<input name="period" type="month" min="2020-01" max="2100-12" defaultValue={periodValue} className="mt-1 block rounded-lg border border-zinc-300 bg-white px-3 py-2" /></label><button className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white">View</button></form>
@@ -94,5 +95,5 @@ export async function DashboardView({ searchParams, history = false }: { searchP
       <section><h2 className="mb-3 text-lg font-semibold">Team ranking · MTD</h2><div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">{ranking.length ? ranking.map((agent, index) => <div key={agent.id} className="flex items-center justify-between border-b border-zinc-100 px-4 py-3 last:border-0"><p><span className="mr-3 text-zinc-500">{index + 1}.</span>{agent.name}</p><p className="text-sm font-medium">{agent.mtd_count} MTD <span className="text-zinc-500">· {agent.ytd_count} YTD</span></p></div>) : <p className="p-4 text-sm text-zinc-600">No active agents yet.</p>}</div></section>
       <section><h2 className="mb-3 text-lg font-semibold">Commercial activity · MTD</h2><div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">{activities.length ? activities.map(a => <div key={a.metric_type} className="flex justify-between border-b border-zinc-100 px-4 py-3 last:border-0"><span>{a.metric_type}</span><span className="font-medium">{a.value}{a.target === null ? "" : ` / ${a.target}`}</span></div>) : <p className="p-4 text-sm text-zinc-600">No activity metrics for this month.</p>}</div></section>
     </div>
-  </AppShell>;
+  </>;
 }

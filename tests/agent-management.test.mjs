@@ -208,7 +208,7 @@ test("username format rejects emails, spaces, punctuation and out-of-range lengt
   }
 });
 
-function loginHarness({ user, valid = true } = {}) {
+function loginHarness({ user, valid = true, setupConfigured = false } = {}) {
   const queries = [], sessions = [];
   const sql = async (parts, ...values) => {
     const text = parts.join("?").replace(/\s+/g, " ");
@@ -219,10 +219,17 @@ function loginHarness({ user, valid = true } = {}) {
     "next/navigation": { redirect: path => { throw new Redirect(path); } },
     "@/lib/db": { getDb: () => sql },
     "@/lib/auth": { verifyPassword: async () => valid, createSession: async id => sessions.push(id) },
+    "@/lib/setup": { hasConfiguredUsers: async () => setupConfigured },
     "@/lib/validation": identityValidation,
   });
   return { actions, queries, sessions };
 }
+test("setup manager stops before password hashing when initialization is already complete", async () => {
+  const h = loginHarness({ setupConfigured: true });
+  await assert.rejects(h.actions.setupManager(form()), to("/login"));
+  assert.equal(h.queries.length, 0);
+});
+
 test("login uses case-insensitive username, never email, and creates a session", async () => {
   const h = loginHarness({ user: { id, active: true, password_hash: "existing-hash", locked_until: null } });
   await assert.rejects(h.actions.login(form({ username: " MHernandez " })), to("/"));

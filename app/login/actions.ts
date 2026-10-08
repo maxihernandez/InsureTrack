@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getDb, withTransaction } from "@/lib/db";
 import { createSession, endSession, hashPassword, verifyPassword } from "@/lib/auth";
 import { parseUsername } from "@/lib/validation";
+import { hasConfiguredUsers } from "@/lib/setup";
 
 export async function logout() {
   await endSession();
@@ -34,6 +35,8 @@ export async function login(data: FormData) {
 }
 
 export async function setupManager(data: FormData) {
+  // Avoid PBKDF2 work on the public bootstrap endpoint after initialization.
+  if (await hasConfiguredUsers()) redirect("/login");
   const first = String(data.get("firstName") ?? "").trim();
   const last = String(data.get("lastName") ?? "").trim();
   const email = String(data.get("email") ?? "").trim().toLowerCase();

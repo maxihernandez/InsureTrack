@@ -2,14 +2,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { getDb } from "@/lib/db";
+import { getManagedAgents } from "@/lib/agents/repository";
 import { createAgent, resetAgentPassword, setAgentStatus, setAgentManagerAccess, updateAgent } from "./actions";
 import { SubmitButton } from "./submit-button";
 import { ProfileFields } from "./profile-fields";
 
 export const instant = false;
 
-type Agent = { id: string; email: string | null; username: string | null; active: boolean; manager_access: boolean; first_name: string; last_name: string };
 const inputClass = "mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2";
 const errors: Record<string, string> = {
   invalid: "Complete all fields correctly. Username: 3–32 letters, digits, dots, underscores or hyphens, starting with a letter/digit. Passwords must match and contain 12–128 characters.",
@@ -40,14 +39,7 @@ export default async function ManageAgents({ searchParams }: { searchParams: Pro
   if (!user) redirect("/login");
   if (user.role !== "manager") redirect("/team");
   const params = await searchParams;
-  const sql = getDb();
-  const [agents, reserved] = await Promise.all([
-    sql<Agent[]>`select u.id, u.email, u.username, u.active, u.manager_access, p.first_name, p.last_name
-    from policyboard.users u join policyboard.roles r on r.id = u.role_id
-    join policyboard.profiles p on p.user_id = u.id where r.code = 'agent'
-    order by u.active desc, p.first_name, p.last_name, u.id`,
-    sql<{ username: string }[]>`select lower(username) as username from policyboard.users where username is not null`,
-  ]);
+  const { agents, reserved } = await getManagedAgents();
   return <>
     <Link href="/team" className="text-sm font-medium text-emerald-800">← Team</Link>
     <div className="mb-6 mt-3"><h1 className="text-2xl font-semibold">Manage agents</h1>

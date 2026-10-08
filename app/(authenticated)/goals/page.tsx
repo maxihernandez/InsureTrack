@@ -1,60 +1,12 @@
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
-import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
-import { getDb } from "@/lib/db";
+import { getGoals } from "@/lib/goals/repository";
 import { parsePeriod } from "@/lib/period";
-import { isUuid } from "@/lib/validation";
+import { removeGoal, saveGoal } from "./actions";
 
 export const instant = false;
 
-
-type GoalRow = { id: string; goal_id: string | null; name: string; code: string; target_count: number | null; target_amount: string | null };
-
-async function saveGoal(form: FormData) {
-  "use server";
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
-  if (user.role !== "manager") redirect("/");
-
-  const productId = String(form.get("product_id") ?? "");
-  const year = Number(form.get("year"));
-  const month = Number(form.get("month"));
-  const targetCount = Number(form.get("target_count"));
-  const amountText = String(form.get("target_amount") ?? "").trim();
-  const amountValid = amountText === "" || /^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/.test(amountText);
-  const period = `${year}-${String(month).padStart(2, "0")}`;
-  if (!isUuid(productId) || !Number.isInteger(year) || year < 2020 || year > 2100 || !Number.isInteger(month) || month < 1 || month > 12 || !Number.isInteger(targetCount) || targetCount < 0 || targetCount > 1_000_000 || !amountValid) {
-    redirect("/goals?error=invalid");
-  }
-
-  const sql = getDb();
-  const product = await sql`select id from policyboard.products where id = ${productId} and active`;
-  if (!product.length) redirect(`/goals?period=${period}&error=product`);
-  await sql`
-    insert into policyboard.goals (product_id, year, month, target_count, target_amount)
-    values (${productId}, ${year}, ${month}, ${targetCount}, ${amountText === "" ? null : amountText})
-    on conflict (product_id, year, month)
-    do update set target_count = excluded.target_count, target_amount = excluded.target_amount
-  `;
-  revalidatePath("/");
-  revalidatePath("/goals");
-  redirect(`/goals?period=${period}&saved=1`);
-}
-
-async function removeGoal(form: FormData) {
-  "use server";
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
-  if (user.role !== "manager") redirect("/");
-  const id = String(form.get("id") ?? "");
-  const period = parsePeriod(String(form.get("period") ?? ""));
-  if (!isUuid(id)) redirect("/goals?error=invalid");
-  await getDb()`delete from policyboard.goals where id = ${id}`;
-  revalidatePath("/");
-  revalidatePath("/goals");
-  redirect(`/goals?period=${period.year}-${String(period.month).padStart(2, "0")}`);
-}
 
 export default async function Goals({ searchParams }: { searchParams: Promise<{ period?: string; error?: string; saved?: string }> }) {
   await connection();
@@ -64,13 +16,7 @@ export default async function Goals({ searchParams }: { searchParams: Promise<{ 
   const params = await searchParams;
   const period = parsePeriod(params.period);
   const periodValue = `${period.year}-${String(period.month).padStart(2, "0")}`;
-  const goals = await getDb()<GoalRow[]>`
-    select p.id, g.id as goal_id, p.name, p.code, g.target_count, g.target_amount::text
-    from policyboard.products p
-    left join policyboard.goals g on g.product_id = p.id and g.year = ${period.year} and g.month = ${period.month}
-    where p.active
-    order by p.display_order
-  `;
+  const goals = await getGoals(period.year, period.month);
   return <>
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div><p className="text-sm font-medium text-emerald-700">Planning</p><h1 className="text-2xl font-semibold">Goals</h1><p className="text-sm text-zinc-600">Team targets for {period.label}</p></div>

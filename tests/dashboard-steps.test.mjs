@@ -28,7 +28,7 @@ function findRole(node, role) {
   return [...(node.props.role === role ? [node] : []), ...React.Children.toArray(node.props.children).flatMap(child => findRole(child, role))];
 }
 
-test("stepper initially shows only Production and associates all tabs with panels", () => {
+test("tabs initially show only Product goals and associates all tabs with panels", () => {
   const h = harness();
   const tree = h.render();
   const tabs = findRole(tree, "tab");

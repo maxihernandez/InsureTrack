@@ -33,14 +33,17 @@ test("desktop sidebar stays within viewport with independent menu scrolling and 
   assert.match(aside, /md:h-dvh/);
   assert.match(aside, /md:overflow-hidden/);
   assert.match(html, /aria-label="Main navigation" class="[^"]*min-h-0[^"]*overflow-y-auto[^"]*overscroll-contain/);
-  assert.match(html, /class="shrink-0 border-t border-zinc-200 pt-5"/);
+  assert.match(html, /class="[^"]*shrink-0[^"]*border-t[^"]*border-zinc-200[^"]*pt-5/);
+  assert.match(html, /aria-label="Unpin sidebar"/);
+  assert.match(html, /transition-\[width\]/);
   assert.match(html, /<main[^>]*>.*Page content/);
 });
 
 test("logout is an accessible submit button on desktop and mobile; role navigation is unchanged", () => {
   const manager = renderShell();
-  assert.equal((manager.match(/>Logout<\/button>/g) ?? []).length, 2);
+  assert.equal((manager.match(/>Logout<\/button>/g) ?? []).length, 1);
   assert.equal((manager.match(/type="submit"/g) ?? []).length, 2);
+  assert.match(manager, /aria-label="Log out"/);
   assert.match(manager, /min-h-11/);
   assert.match(manager, /focus-visible:outline-2/);
   assert.match(manager, /href="\/goals"/);

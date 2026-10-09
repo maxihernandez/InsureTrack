@@ -3,9 +3,10 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getManagedAgents } from "@/lib/agents/repository";
-import { createAgent, resetAgentPassword, setAgentStatus, setAgentManagerAccess, updateAgent } from "./actions";
+import { resetAgentPassword, setAgentStatus, setAgentManagerAccess, updateAgent } from "./actions";
 import { SubmitButton } from "./submit-button";
 import { ProfileFields } from "./profile-fields";
+import { CreateAgentStepper } from "./create-agent-stepper";
 
 export const instant = false;
 
@@ -48,22 +49,22 @@ export default async function ManageAgents({ searchParams }: { searchParams: Pro
     {params.saved && <p role="status" className="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{messages[params.saved] ?? "Changes saved."}</p>}
     <section className="mb-8 rounded-xl border border-zinc-200 bg-white p-5">
       <h2 className="mb-4 text-lg font-semibold">Create agent</h2>
-      <form action={createAgent} className="space-y-4">
-        <ProfileFields key={reserved.length} reservedUsernames={reserved.map(row => row.username)} /><PasswordFields />
-        <p className="text-sm text-zinc-600">12–128 characters. Share credentials through a secure channel. The password is never displayed after saving.</p>
-        <SubmitButton>Create agent</SubmitButton>
-      </form>
+      <CreateAgentStepper key={reserved.length} reservedUsernames={reserved.map(row => row.username)} />
     </section>
     <section><h2 className="mb-3 text-lg font-semibold">Agents ({agents.length})</h2>
       {!agents.length && <p className="rounded-xl border bg-white p-5 text-sm text-zinc-600">No agents yet. Create the first agent above.</p>}
-      <div className="space-y-4">{agents.map(agent => <article key={`${agent.id}:${agent.username}:${agent.email}:${agent.active}:${agent.manager_access}:${agent.first_name}:${agent.last_name}`} className="rounded-xl border border-zinc-200 bg-white p-5">
+      <div className="space-y-3">{agents.map(agent => <details key={`${agent.id}:${agent.username}:${agent.email}:${agent.active}:${agent.manager_access}:${agent.first_name}:${agent.last_name}`} className="group rounded-xl border border-zinc-200 bg-white">
+        <summary className="cursor-pointer list-none p-4 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-700">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div><h3 className="font-semibold">{agent.first_name} {agent.last_name}</h3><p className="break-all text-sm text-zinc-600">{agent.email}</p><p className={`text-sm ${agent.username ? "text-zinc-600" : "text-amber-800"}`}>{agent.username ? `Username: ${agent.username}` : "Assign a username in Edit profile to enable sign-in."}</p></div>
-          <span className={`rounded-full px-3 py-1 text-xs font-medium ${agent.active ? "bg-emerald-100 text-emerald-900" : "bg-zinc-100 text-zinc-600"}`}>{agent.active ? "Active" : "Inactive"}</span>
+          <div><h3 className="font-semibold">{agent.first_name} {agent.last_name}</h3><p className="break-all text-sm text-zinc-600">{agent.email}</p></div>
+          <span className={`rounded-full px-3 py-1 text-xs font-medium ${agent.active ? "bg-emerald-100 text-emerald-900" : "bg-zinc-100 text-zinc-600"}`}>{agent.active ? "Active" : "Inactive"}</span><span aria-hidden="true" className="text-lg leading-none text-zinc-500 transition-transform group-open:rotate-180">⌄</span>
         </div>
         <p className="mt-2 text-sm font-medium text-emerald-800">{agent.manager_access ? "Agent + Manager" : "Agent"}</p>
+        </summary>
+        <div className="border-t border-zinc-100 p-4 pt-4">
+        <p className={`text-sm ${agent.username ? "text-zinc-600" : "text-amber-800"}`}>{agent.username ? `Username: ${agent.username}` : "Assign a username in Profile details to enable sign-in."}</p>
         <div className="mt-4 flex flex-wrap gap-4"><Link href={`/team/${agent.id}`} className="text-sm font-medium text-emerald-800">View production</Link></div>
-        {agent.id !== user.id ? <details className="mt-4 border-t border-zinc-100 pt-4"><summary className="cursor-pointer text-sm font-medium">Manager access</summary>
+        {agent.id !== user.id ? <details className="mt-4 border-t border-zinc-100 pt-4"><summary className="cursor-pointer text-sm font-medium">Access & permissions</summary>
           <form action={setAgentManagerAccess} className="mt-4 space-y-3">
             <input type="hidden" name="id" value={agent.id} /><input type="hidden" name="access" value={agent.manager_access ? "disabled" : "enabled"} />
             <p className="text-sm text-zinc-600">Full manager permissions: goals, team production and administration of other agents. This account remains an agent in production and ranking.</p>
@@ -72,21 +73,22 @@ export default async function ManageAgents({ searchParams }: { searchParams: Pro
             <SubmitButton danger={agent.manager_access} disabled={!agent.active && !agent.manager_access}>{agent.manager_access ? "Remove manager access" : "Enable manager access"}</SubmitButton>
           </form>
         </details> : <p className="mt-3 text-sm text-zinc-500">Another manager must change your manager access.</p>}
-        <details className="mt-4 border-t border-zinc-100 pt-4"><summary className="cursor-pointer text-sm font-medium">Edit profile</summary>
+        <details className="mt-4 border-t border-zinc-100 pt-4"><summary className="cursor-pointer text-sm font-medium">Profile details</summary>
           <form action={updateAgent} className="mt-4 space-y-4"><input type="hidden" name="id" value={agent.id} /><ProfileFields agent={agent} /><SubmitButton>Save profile</SubmitButton></form>
         </details>
-        <details className="mt-4 border-t border-zinc-100 pt-4"><summary className="cursor-pointer text-sm font-medium">Reset password</summary>
+        <details className="mt-4 border-t border-zinc-100 pt-4"><summary className="cursor-pointer text-sm font-medium">Password & sessions</summary>
           <form action={resetAgentPassword} className="mt-4 space-y-4"><input type="hidden" name="id" value={agent.id} /><PasswordFields />
             <label className="flex items-start gap-2 text-sm text-zinc-600"><input name="confirm" type="checkbox" value="yes" required className="mt-1" />I confirm replacing the password and signing out this agent on all devices.</label>
             <SubmitButton>Reset password</SubmitButton>
           </form>
         </details>
-        <form action={setAgentStatus} className="mt-4 space-y-3 border-t border-zinc-100 pt-4">
+        <form action={setAgentStatus} className="mt-4 space-y-3 border-t border-zinc-100 pt-4" aria-label="Account status">
           <input type="hidden" name="id" value={agent.id} /><input type="hidden" name="status" value={agent.active ? "inactive" : "active"} />
           {agent.active && <label className="flex items-start gap-2 text-sm text-zinc-600"><input name="confirm" type="checkbox" value="yes" required className="mt-1" />I confirm disabling access and revoking existing sessions. Historical sales will not be deleted.</label>}
           <SubmitButton danger={agent.active}>{agent.active ? "Deactivate agent" : "Activate agent"}</SubmitButton>
         </form>
-      </article>)}</div>
+        </div>
+      </details>)}</div>
     </section>
   </>;
 }

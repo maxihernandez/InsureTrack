@@ -5,11 +5,23 @@ import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { parsePeriod } from "@/lib/period";
 import { DashboardSteps } from "@/app/dashboard-steps";
+import { ProductGoalsSection } from "@/app/product-goals-section";
+import { TeamRanking } from "@/app/team-ranking";
 
 type ProductProgress = { id: string; name: string; target_count: number | null; target_amount: string | null; mtd_count: number; ytd_count: number; mtd_premium: string; ytd_premium: string; mtd_amount: string };
 type Ranking = { id: string; name: string; mtd_count: number; ytd_count: number };
 type Activity = { metric_type: string; value: number; target: number | null };
 const money = (value: string | number) => `$${Number(value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+type SummaryMetric = "mtd-sales" | "monthly-goal" | "ytd-sales" | "mtd-premium";
+function SummaryIcon({ metric }: { metric: SummaryMetric }) {
+  const graphic = metric === "mtd-sales" ? <><path d="M4 4h8l8 8-8 8-8-8V4Z" /><circle cx="9" cy="9" r="1" /><path d="M14 11v5m1.5-4c-.4-.5-2.5-.6-2.5.6 0 1.6 2.5.6 2.5 2.1 0 1.2-2.1 1.1-2.6.5" /></>
+    : metric === "monthly-goal" ? <><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3" /><path d="M12 2v3m0 14v3M2 12h3m14 0h3" /></>
+      : metric === "ytd-sales" ? <><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M8 3v4m8-4v4M4 10h16m-9 4h5m-5 3h3" /></>
+        : <><circle cx="12" cy="12" r="8" /><path d="M14.5 9.5c-.5-.8-1.5-1.2-2.5-1.2-1.4 0-2.4.7-2.4 1.8 0 2.7 4.9 1.3 4.9 4 0 1.1-1.1 1.9-2.6 1.9-1.2 0-2.2-.5-2.8-1.4M12 6.5v11" /></>;
+  return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-5">{graphic}</svg>;
+}
+
 
 export async function DashboardView({ searchParams, history = false }: { searchParams: Promise<{ period?: string }>; history?: boolean }) {
   await connection();
@@ -70,29 +82,18 @@ export async function DashboardView({ searchParams, history = false }: { searchP
   const goal = products.reduce((total, p) => total + (p.target_count ?? 0), 0);
   const premium = products.reduce((total, p) => total + Number(p.mtd_premium), 0);
   return <>
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
       <div><p className="text-sm font-medium text-emerald-700">Team performance</p><h1 className="text-2xl font-semibold">{history ? "Monthly history" : "Dashboard"}</h1><p className="text-sm text-zinc-600">{period.label}</p></div>
-      <form method="get" className="flex items-end gap-2"><label className="text-sm font-medium">Month<input name="period" type="month" min="2020-01" max="2100-12" defaultValue={periodValue} className="mt-1 block rounded-lg border border-zinc-300 bg-white px-3 py-2" /></label><button className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white">View</button></form>
+      <div className="flex flex-wrap items-end gap-2">
+        {!history && <Link href="/production" className="inline-flex min-h-11 items-center justify-center rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">Add sale</Link>}
+        <form method="get" className="flex items-end gap-2"><label className="text-sm font-medium">Month<input name="period" type="month" min="2020-01" max="2100-12" defaultValue={periodValue} className="mt-1 block rounded-lg border border-zinc-300 bg-white px-3 py-2" /></label><button className="min-h-11 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white">View</button></form>
+      </div>
     </div>
-    <section aria-label="Summary" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {[{ label: "MTD sales", value: mtd }, { label: "Monthly goal", value: goal }, { label: "YTD sales", value: ytd }, { label: "MTD premium", value: money(premium) }].map(item => <div key={item.label} className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm"><p className="text-sm text-zinc-600">{item.label}</p><p className="mt-1 text-2xl font-semibold">{item.value}</p></div>)}
+    <section aria-label="Summary" className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      {[{ label: "MTD sales", value: mtd, metric: "mtd-sales" as const, tone: "bg-emerald-50 text-emerald-800" }, { label: "Monthly goal", value: goal, metric: "monthly-goal" as const, tone: "bg-sky-50 text-sky-800" }, { label: "YTD sales", value: ytd, metric: "ytd-sales" as const, tone: "bg-violet-50 text-violet-800" }, { label: "MTD premium", value: money(premium), metric: "mtd-premium" as const, tone: "bg-amber-50 text-amber-800" }].map(item => <div key={item.label} className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm"><span className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${item.tone}`}><SummaryIcon metric={item.metric} /></span><div><p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{item.label}</p><p className="mt-0.5 text-2xl font-semibold tracking-tight tabular-nums text-zinc-950">{item.value}</p></div></div>)}
     </section>
-    <DashboardSteps key={periodValue} enabled={!history} production={<section className={history ? "mt-8" : ""}><div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">Product goals</h2>{user.role === "manager" && <Link className="text-sm font-medium text-emerald-700 hover:underline" href={`/goals?period=${periodValue}`}>Edit goals</Link>}</div>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{products.map(p => {
-        const target = p.target_count;
-        const shownActual = Math.min(p.mtd_count, 40);
-        const shownRemaining = target === null ? 0 : Math.min(Math.max(target - p.mtd_count, 0), 40 - shownActual);
-        return <article key={p.id} className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm"><div className="flex items-start justify-between gap-2"><h3 className="font-semibold">{p.name}</h3><span className="text-sm text-zinc-600">{target === null ? "No goal" : `${target ? Math.round(p.mtd_count / target * 100) : 0}%`}</span></div>
-          <div aria-hidden="true" className="mt-3 break-all text-lg leading-6 tracking-wider text-emerald-600">{"●".repeat(shownActual)}<span className="text-zinc-300">{"○".repeat(shownRemaining)}</span></div>
-          <p className="mt-2 text-sm font-medium">{p.mtd_count} / {target ?? "—"} sales</p>
-          <p className="mt-1 text-xs text-zinc-500">Remaining: {target === null ? "—" : Math.max(target - p.mtd_count, 0)} · YTD: {p.ytd_count}</p>
-          <p className="mt-2 text-sm text-zinc-600">Premium MTD: {money(p.mtd_premium)}</p>
-          {p.target_amount !== null && <p className="text-xs text-zinc-500">Amount: {money(p.mtd_amount)} / {money(p.target_amount)}{Number(p.target_amount) > 0 ? ` · ${Math.round(Number(p.mtd_amount) / Number(p.target_amount) * 100)}%` : ""}</p>}
-          {(p.mtd_count > 40 || (target !== null && target > 40)) && <p className="mt-1 text-xs text-zinc-500">Showing up to 40 markers.</p>}
-        </article>;
-      })}</div>
-    </section>} ranking={
-      <section><h2 className="mb-3 text-lg font-semibold">Team ranking · MTD</h2><div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">{ranking.length ? ranking.map((agent, index) => <div key={agent.id} className="flex items-center justify-between border-b border-zinc-100 px-4 py-3 last:border-0"><p><span className="mr-3 text-zinc-500">{index + 1}.</span>{agent.name}</p><p className="text-sm font-medium">{agent.mtd_count} MTD <span className="text-zinc-500">· {agent.ytd_count} YTD</span></p></div>) : <p className="p-4 text-sm text-zinc-600">No active agents yet.</p>}</div></section>
+    <DashboardSteps key={periodValue} enabled={!history} production={<ProductGoalsSection products={products} editGoalsHref={user.role === "manager" ? `/goals?period=${periodValue}` : undefined} customizable={!history} />} ranking={
+      <TeamRanking agents={ranking} />
     } commercial={
       <section><h2 className="mb-3 text-lg font-semibold">Commercial activity · MTD</h2><div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">{activities.length ? activities.map(a => <div key={a.metric_type} className="flex justify-between border-b border-zinc-100 px-4 py-3 last:border-0"><span>{a.metric_type}</span><span className="font-medium">{a.value}{a.target === null ? "" : ` / ${a.target}`}</span></div>) : <p className="p-4 text-sm text-zinc-600">No activity metrics for this month.</p>}</div></section>
     } />

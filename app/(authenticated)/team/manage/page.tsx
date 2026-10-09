@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getManagedAgents } from "@/lib/agents/repository";
+import { isUuid } from "@/lib/validation";
 import { resetAgentPassword, setAgentStatus, setAgentManagerAccess, updateAgent } from "./actions";
 import { SubmitButton } from "./submit-button";
 import { ProfileFields } from "./profile-fields";
@@ -34,15 +35,16 @@ function PasswordFields() {
   </div>;
 }
 
-export default async function ManageAgents({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string }> }) {
+export default async function ManageAgents({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string; agent?: string }> }) {
   await connection();
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (user.role !== "manager") redirect("/team");
+  if (user.role !== "manager") redirect("/");
   const params = await searchParams;
+  const selectedAgentId = params.agent && isUuid(params.agent) ? params.agent : null;
   const { agents, reserved } = await getManagedAgents();
   return <>
-    <Link href="/team" className="text-sm font-medium text-emerald-800">← Team</Link>
+    <Link href="/team" aria-label="Back to team" title="Back to team" className="inline-flex size-10 items-center justify-center rounded-lg border border-zinc-300 bg-white text-zinc-700 shadow-sm transition-colors hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-5"><path d="M19 12H5m6-6-6 6 6 6" /></svg></Link>
     <div className="mb-6 mt-3"><h1 className="text-2xl font-semibold">Manage agents</h1>
       <p className="mt-1 text-sm text-zinc-600">Manager only. Agent credentials belong to PolicyBoard, not Supabase Auth.</p></div>
     {params.error && <p role="alert" className="mb-5 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{errors[params.error] ?? errors.save}</p>}
@@ -51,9 +53,7 @@ export default async function ManageAgents({ searchParams }: { searchParams: Pro
       <h2 className="mb-4 text-lg font-semibold">Create agent</h2>
       <CreateAgentStepper key={reserved.length} reservedUsernames={reserved.map(row => row.username)} />
     </section>
-    <section><h2 className="mb-3 text-lg font-semibold">Agents ({agents.length})</h2>
-      {!agents.length && <p className="rounded-xl border bg-white p-5 text-sm text-zinc-600">No agents yet. Create the first agent above.</p>}
-      <div className="space-y-3">{agents.map(agent => <details key={`${agent.id}:${agent.username}:${agent.email}:${agent.active}:${agent.manager_access}:${agent.first_name}:${agent.last_name}`} className="group rounded-xl border border-zinc-200 bg-white">
+    <section aria-label="Selected agent"><div className="space-y-3">{selectedAgentId ? agents.filter(agent => agent.id === selectedAgentId).map(agent => <details id={`agent-${agent.id}`} open={selectedAgentId === agent.id} key={`${agent.id}:${agent.username}:${agent.email}:${agent.active}:${agent.manager_access}:${agent.first_name}:${agent.last_name}`} className="group rounded-xl border border-zinc-200 bg-white">
         <summary className="cursor-pointer list-none p-4 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-700">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div><h3 className="font-semibold">{agent.first_name} {agent.last_name}</h3><p className="break-all text-sm text-zinc-600">{agent.email}</p></div>
@@ -88,7 +88,7 @@ export default async function ManageAgents({ searchParams }: { searchParams: Pro
           <SubmitButton danger={agent.active}>{agent.active ? "Deactivate agent" : "Activate agent"}</SubmitButton>
         </form>
         </div>
-      </details>)}</div>
+      </details>) : null}</div>
     </section>
   </>;
 }

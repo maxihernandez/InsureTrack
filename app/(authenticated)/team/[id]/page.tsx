@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { parsePeriod } from "@/lib/period";
+import { MonthPicker } from "@/app/month-picker";
 import { isUuid } from "@/lib/validation";
 
 export const instant = false;
@@ -17,7 +18,7 @@ export default async function AgentDetail({ params, searchParams }: { params: Pr
   if (!user) redirect("/login");
   const { id } = await params;
   if (!isUuid(id)) notFound();
-  if (user.role !== "manager" && user.id !== id) redirect("/team");
+  if (user.role !== "manager") redirect("/");
   const { period: rawPeriod } = await searchParams;
   const period = parsePeriod(rawPeriod);
   const periodValue = `${period.year}-${String(period.month).padStart(2, "0")}`;
@@ -50,7 +51,7 @@ export default async function AgentDetail({ params, searchParams }: { params: Pr
   return <>
     <Link href={`/team?period=${periodValue}`} className="text-sm text-emerald-700 hover:underline">← Team</Link>
     <div className="mb-6 mt-4 flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-medium text-emerald-700">Agent detail</p><h1 className="text-2xl font-semibold">{agent.name}</h1><p className="text-sm text-zinc-600">{period.label}</p></div>
-      <form method="get" className="flex items-end gap-2"><label className="text-sm font-medium">Month<input name="period" type="month" min="2020-01" max="2100-12" defaultValue={periodValue} className="mt-1 block rounded-lg border border-zinc-300 bg-white px-3 py-2" /></label><button className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white">View</button></form></div>
+      <MonthPicker value={periodValue} /></div>
     <div className="mb-6 grid grid-cols-2 gap-3"><div className="rounded-xl border border-zinc-200 bg-white p-4"><p className="text-sm text-zinc-600">MTD sales</p><p className="text-2xl font-semibold">{mtd}</p></div><div className="rounded-xl border border-zinc-200 bg-white p-4"><p className="text-sm text-zinc-600">YTD sales</p><p className="text-2xl font-semibold">{ytd}</p></div></div>
     <h2 className="mb-3 text-lg font-semibold">Production by product</h2><p className="mb-3 text-sm text-zinc-600">Targets below belong to the team; they are not individual quotas.</p>
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{breakdown.map(row => <article key={row.id} className="rounded-xl border border-zinc-200 bg-white p-4"><h3 className="font-semibold">{row.name}</h3><p className="mt-2 text-sm">{row.mtd_count} MTD · {row.ytd_count} YTD</p><p className="text-sm text-zinc-600">Team target: {row.team_target ?? "—"}</p><p className="text-sm text-zinc-600">MTD premium: ${Number(row.mtd_premium).toLocaleString("en-US", { minimumFractionDigits: 2 })}</p></article>)}</div>

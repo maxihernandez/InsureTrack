@@ -39,7 +39,7 @@ test("desktop sidebar stays within viewport with independent menu scrolling and 
   assert.match(html, /<main[^>]*>.*Page content/);
 });
 
-test("logout is an accessible submit button on desktop and mobile; role navigation is unchanged", () => {
+test("logout is an accessible submit button and manager navigation is restricted", () => {
   const manager = renderShell();
   assert.equal((manager.match(/>Logout<\/button>/g) ?? []).length, 1);
   assert.equal((manager.match(/type="submit"/g) ?? []).length, 2);
@@ -48,6 +48,10 @@ test("logout is an accessible submit button on desktop and mobile; role navigati
   assert.match(manager, /focus-visible:outline-2/);
   assert.match(manager, /href="\/goals"/);
   assert.match(manager, /href="\/team" aria-current="page"/);
-  assert.doesNotMatch(renderShell("agent"), /href="\/goals"/);
+  assert.doesNotMatch(manager, /href="\/production"/);
+  const agent = renderShell("agent");
+  assert.doesNotMatch(agent, /href="\/team"/);
+  assert.doesNotMatch(agent, /href="\/history"/);
+  assert.doesNotMatch(agent, /href="\/goals"/);
   assert.match(manager, /aria-label="Mobile navigation"/);
 });

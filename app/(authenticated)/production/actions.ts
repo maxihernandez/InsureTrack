@@ -14,3 +14,16 @@ export async function addSale(form: FormData) {
   revalidatePath("/"); revalidatePath("/production");
   redirect("/production?saved=1");
 }
+export type DashboardSaleResult = { ok: true } | { ok: false; message: string };
+
+export async function addSaleFromDashboard(form: FormData): Promise<DashboardSaleResult> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, message: "Your session has expired. Sign in again." };
+  const agentId = user.role === "manager" ? String(form.get("agent_id") ?? "") : user.id;
+  const input = readCreateSale(form, agentId);
+  if (!input) return { ok: false, message: "Check the required sale details." };
+  if (await executeCreateSale(user, input) !== "saved") return { ok: false, message: "The selected agent or product is no longer active." };
+  revalidatePath("/");
+  revalidatePath("/production");
+  return { ok: true };
+}

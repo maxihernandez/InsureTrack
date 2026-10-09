@@ -1,9 +1,9 @@
 import "server-only";
 import { getDb } from "@/lib/db";
-import { reportRange, type ReportMonth, type ReportBreakdown } from "@/lib/report-summary";
+import { reportRange, type ReportMonth, type ReportBreakdown, type ReportRangeMonths } from "@/lib/report-summary";
 
-export async function getHistoricalReport(endMonth: string) {
-  const range = reportRange(endMonth);
+export async function getHistoricalReport(endMonth: string, rangeMonths: ReportRangeMonths = 12) {
+  const range = reportRange(endMonth, rangeMonths);
   const sql = getDb();
   const [months, products, agents] = await Promise.all([
     sql<ReportMonth[]>`

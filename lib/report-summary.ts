@@ -3,9 +3,17 @@ export type ReportMonth = {
 };
 export type ReportBreakdown = { id: string; name: string; sales: number; premium: string };
 
-export function reportRange(endMonth: string) {
+export const reportRangeOptions = [3, 6, 12] as const;
+export type ReportRangeMonths = (typeof reportRangeOptions)[number];
+
+export function parseReportRange(value: string | undefined): ReportRangeMonths {
+  const months = Number(value);
+  return reportRangeOptions.includes(months as ReportRangeMonths) ? months as ReportRangeMonths : 12;
+}
+
+export function reportRange(endMonth: string, months: ReportRangeMonths = 12) {
   const date = new Date(`${endMonth}-01T00:00:00Z`);
-  const start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() - 11, 1)).toISOString().slice(0, 10);
+  const start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() - (months - 1), 1)).toISOString().slice(0, 10);
   const end = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1)).toISOString().slice(0, 10);
   return { start, end };
 }

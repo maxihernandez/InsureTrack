@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type DragEvent } from "react";
+import { useState, useTransition, type DragEvent } from "react";
 import { ProgressBar } from "@/app/progress-bar";
+import { saveDashboardLayout } from "@/app/dashboard-actions";
+import { DashboardSaleDialog } from "@/app/dashboard-sale-dialog";
 
 export type ProductGoalCard = {
   id: string;
@@ -14,12 +16,16 @@ export type ProductGoalCard = {
   mtd_premium: string;
   ytd_premium: string;
   mtd_amount: string;
+  active: boolean;
 };
 
 type ProductGoalsSectionProps = {
   products: ProductGoalCard[];
   editGoalsHref?: string;
   customizable: boolean;
+  savedLayout?: { product_order: string[]; hidden_product_ids: string[] } | null;
+  isManager: boolean;
+  agents: { id: string; name: string }[];
 };
 
 const money = (value: string | number) => `$${Number(value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -40,14 +46,29 @@ function ProductIcon({ product }: { product: string }) {
   return <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-800"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-4">{graphic}</svg></span>;
 }
 
-export function ProductGoalsSection({ products, editGoalsHref, customizable }: ProductGoalsSectionProps) {
+function ProductSummaryDialog({ product }: { product: ProductGoalCard }) {
+  const [open, setOpen] = useState(false);
+  const hasGoal = product.target_count !== null;
+  const remaining = product.target_count === null ? null : Math.max(product.target_count - product.mtd_count, 0);
+  return <>
+    <button type="button" onClick={() => setOpen(true)} aria-label={`View ${product.name} summary`} title={`View ${product.name} summary`} className="inline-flex size-9 items-center justify-center rounded-lg text-zinc-600 hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-4"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" /><circle cx="12" cy="12" r="2.5" /></svg></button>
+    {open && <div className="fixed inset-0 z-40 overflow-y-auto bg-zinc-950/30 p-4 sm:p-6" onClick={() => setOpen(false)}><div role="dialog" aria-modal="true" aria-labelledby={`product-summary-${product.id}`} onClick={event => event.stopPropagation()} className="mx-auto my-4 w-full max-w-md rounded-xl border border-zinc-200 bg-white p-5 shadow-2xl sm:my-10"><div className="flex items-start justify-between gap-4"><div><p className="text-sm font-medium text-emerald-700">Product summary</p><h3 id={`product-summary-${product.id}`} className="mt-1 text-xl font-semibold">{product.name}</h3><p className="mt-1 text-sm text-zinc-600">Current month performance.</p></div><button type="button" onClick={() => setOpen(false)} aria-label="Close product summary" title="Close" className="inline-flex size-10 items-center justify-center rounded-lg text-zinc-600 hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700">×</button></div><dl className="mt-5 grid grid-cols-2 gap-3 text-sm"><div className="rounded-lg bg-emerald-50 p-3"><dt className="text-emerald-800">MTD sales</dt><dd className="mt-1 text-xl font-semibold text-emerald-950">{product.mtd_count}{hasGoal ? ` / ${product.target_count}` : ""}</dd></div><div className="rounded-lg bg-zinc-100 p-3"><dt className="text-zinc-600">{hasGoal ? "Remaining" : "YTD sales"}</dt><dd className="mt-1 text-xl font-semibold text-zinc-900">{hasGoal ? remaining : product.ytd_count}</dd></div><div className="rounded-lg border border-zinc-200 p-3"><dt className="text-zinc-600">YTD sales</dt><dd className="mt-1 text-lg font-semibold text-zinc-900">{product.ytd_count}</dd></div><div className="rounded-lg border border-zinc-200 p-3"><dt className="text-zinc-600">MTD premium</dt><dd className="mt-1 text-lg font-semibold text-zinc-900">{money(product.mtd_premium)}</dd></div>{product.target_amount !== null && <><div className="rounded-lg border border-zinc-200 p-3"><dt className="text-zinc-600">MTD amount</dt><dd className="mt-1 text-lg font-semibold text-zinc-900">{money(product.mtd_amount)}</dd></div><div className="rounded-lg border border-zinc-200 p-3"><dt className="text-zinc-600">Amount target</dt><dd className="mt-1 text-lg font-semibold text-zinc-900">{money(product.target_amount)}</dd></div></>}</dl><div className="mt-5 flex justify-end"><button type="button" onClick={() => setOpen(false)} className="min-h-10 rounded-lg bg-zinc-900 px-4 text-sm font-semibold text-white hover:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700">Close</button></div></div></div>}
+  </>;
+}
+export function ProductGoalsSection({ products, editGoalsHref, customizable, savedLayout, isManager, agents }: ProductGoalsSectionProps) {
   const defaultOrder = products.map(product => product.id);
-  const [appliedOrder, setAppliedOrder] = useState(defaultOrder);
-  const [appliedVisible, setAppliedVisible] = useState(new Set(defaultOrder));
-  const [draftOrder, setDraftOrder] = useState(defaultOrder);
-  const [draftVisible, setDraftVisible] = useState(new Set(defaultOrder));
+  const savedOrder = [...new Set((savedLayout?.product_order ?? []).filter(id => defaultOrder.includes(id)))];
+  const initialOrder = [...savedOrder, ...defaultOrder.filter(id => !savedOrder.includes(id))];
+  const hiddenIds = new Set((savedLayout?.hidden_product_ids ?? []).filter(id => defaultOrder.includes(id)));
+  const initialVisible = new Set(initialOrder.filter(id => !hiddenIds.has(id)));
+  const [appliedOrder, setAppliedOrder] = useState(initialOrder);
+  const [appliedVisible, setAppliedVisible] = useState(initialVisible);
+  const [draftOrder, setDraftOrder] = useState(initialOrder);
+  const [draftVisible, setDraftVisible] = useState(initialVisible);
   const [open, setOpen] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [isSaving, startSaving] = useTransition();
+  const [saveError, setSaveError] = useState<string | null>(null);
   const productsById = new Map(products.map(product => [product.id, product]));
   const visibleProducts = appliedOrder.flatMap(id => {
     const product = productsById.get(id);
@@ -88,16 +109,23 @@ export function ProductGoalsSection({ products, editGoalsHref, customizable }: P
   }
 
   function apply() {
-    setAppliedOrder(draftOrder);
-    setAppliedVisible(new Set(draftVisible));
+    const nextOrder = [...draftOrder];
+    const nextVisible = new Set(draftVisible);
+    setAppliedOrder(nextOrder);
+    setAppliedVisible(nextVisible);
     setOpen(false);
+    setSaveError(null);
+    startSaving(async () => {
+      const result = await saveDashboardLayout({ productOrder: nextOrder, hiddenProductIds: defaultOrder.filter(id => !nextVisible.has(id)) });
+      if (!result.ok) setSaveError(result.message);
+    });
   }
 
   return <section>
     <div className="mb-2 flex items-end justify-between gap-3"><div><h2 className="text-base font-semibold">Product goals</h2><p className="text-xs text-zinc-600">Monthly progress by product.</p></div><div className="flex shrink-0 items-center gap-3">{editGoalsHref && <Link className="text-sm font-medium text-emerald-700 hover:underline" href={editGoalsHref}>Edit goals</Link>}</div></div>
-    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{visibleProducts.map(product => <article key={product.id} className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm"><div className="flex items-start justify-between gap-2"><div className="flex min-w-0 items-center gap-3"><ProductIcon product={product.name} /><h3 className="truncate font-semibold">{product.name}</h3></div><span className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${product.target_count === null ? "bg-amber-50 text-amber-900" : product.mtd_count >= product.target_count ? "bg-emerald-100 text-emerald-900" : "bg-zinc-100 text-zinc-700"}`}>{product.target_count === null ? "No goal" : product.mtd_count >= product.target_count ? "Goal reached" : `${Math.max(product.target_count - product.mtd_count, 0)} remaining`}</span></div>
-      {product.target_count === null ? <p className="mt-3 text-lg font-semibold tabular-nums">{product.mtd_count} <span className="text-sm font-medium text-zinc-500">sales this month</span></p> : <ProgressBar current={product.mtd_count} target={product.target_count} label={`${product.name} monthly goal progress`} />}
-      <p className="mt-1 text-xs text-zinc-500">YTD: {product.ytd_count}</p><p className="mt-1 text-sm text-zinc-600">Premium MTD: {money(product.mtd_premium)}</p>{product.target_amount !== null && <p className="text-xs text-zinc-500">Amount: {money(product.mtd_amount)} / {money(product.target_amount)}{Number(product.target_amount) > 0 ? ` · ${Math.round(Number(product.mtd_amount) / Number(product.target_amount) * 100)}%` : ""}</p>}
+    {saveError ? <p role="alert" className="mb-2 text-sm text-rose-700">{saveError}</p> : isSaving ? <p role="status" className="mb-2 text-sm text-zinc-600">Saving dashboard layout...</p> : null}
+    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{visibleProducts.map(product => <article key={product.id} className="rounded-xl border border-zinc-200 bg-white p-2.5 shadow-sm"><div className="flex items-start justify-between gap-2"><div className="flex min-w-0 items-center gap-2"><ProductIcon product={product.name} /><h3 className="truncate font-semibold">{product.name}</h3></div><span className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${product.target_count === null ? "bg-amber-50 text-amber-900" : product.mtd_count >= product.target_count ? "bg-emerald-100 text-emerald-900" : "bg-zinc-100 text-zinc-700"}`}>{product.target_count === null ? "No goal" : product.mtd_count >= product.target_count ? "Goal reached" : `${Math.max(product.target_count - product.mtd_count, 0)} remaining`}</span></div>
+      {product.target_count === null ? <p className="mt-2 text-lg font-semibold tabular-nums">{product.mtd_count} <span className="text-sm font-medium text-zinc-500">sales this month</span></p> : <ProgressBar current={product.mtd_count} target={product.target_count} label={`${product.name} monthly goal progress`} compact />}{product.target_amount !== null && <p className="mt-1 text-xs text-zinc-500">Amount: {money(product.mtd_amount)} / {money(product.target_amount)}{Number(product.target_amount) > 0 ? ` · ${Math.round(Number(product.mtd_amount) / Number(product.target_amount) * 100)}%` : ""}</p>}<div className="mt-2 flex items-center justify-between gap-2"><div className="flex min-w-0 items-center gap-2 text-xs text-zinc-600"><span className="whitespace-nowrap">YTD: <strong className="font-semibold text-zinc-800">{product.ytd_count}</strong></span><span className="whitespace-nowrap">Premium: <strong className="font-semibold text-zinc-800">{money(product.mtd_premium)}</strong></span></div><div className="flex shrink-0 items-center gap-1"><ProductSummaryDialog product={product} />{product.active && (!isManager || agents.length > 0) && <DashboardSaleDialog product={product} isManager={isManager} agents={agents} compact />}</div></div>
     </article>)}</div>
     {customizable && <button type="button" onClick={openCustomizer} className="fixed bottom-5 right-5 z-20 inline-flex min-h-11 items-center gap-2 rounded-full bg-emerald-800 px-4 text-sm font-semibold text-white shadow-lg hover:bg-emerald-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"><span aria-hidden="true">☷</span>Customize dashboard</button>}
     {open && <div className="fixed inset-0 z-30 bg-zinc-950/20" onClick={() => setOpen(false)}><aside role="dialog" aria-modal="true" aria-label="Customize dashboard" onClick={event => event.stopPropagation()} className="ml-auto flex h-dvh w-full max-w-sm flex-col border-l border-zinc-200 bg-white shadow-2xl"><div className="flex items-start justify-between border-b border-zinc-200 p-5"><div><h2 className="text-lg font-semibold">Customize dashboard</h2><p className="mt-1 text-sm text-zinc-600">Drag products to reorder. Uncheck products to hide them.</p></div><button type="button" onClick={() => setOpen(false)} aria-label="Close customization" className="inline-flex size-10 items-center justify-center rounded-lg text-zinc-600 hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700">×</button></div>

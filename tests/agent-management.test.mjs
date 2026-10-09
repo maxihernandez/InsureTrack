@@ -94,7 +94,7 @@ test("every mutation rejects agents and anonymous requests before hashing or que
   for (const user of [null, { role: "agent" }]) {
     for (const action of ["createAgent", "updateAgent", "setAgentStatus", "resetAgentPassword", "setAgentManagerAccess"]) {
       const h = harness({ user });
-      await assert.rejects(h.actions[action](form()), to(user ? "/team" : "/login"));
+      await assert.rejects(h.actions[action](form()), to(user ? "/" : "/login"));
       assert.equal(h.queries.length, 0); assert.equal(h.hashes.length, 0);
     }
   }
@@ -127,7 +127,7 @@ test("manager access preserves the base role and atomically revokes sessions", a
 });
 test("creation commits user and profile together, stores only hash and refreshes production", async () => {
   const h = harness({ results: [[{ id: 2 }], [], [{ id }], []] });
-  await assert.rejects(h.actions.createAgent(form()), to("/team/manage?saved=created"));
+  await assert.rejects(h.actions.createAgent(form()), to("/team?saved=created"));
   assert.equal(h.committed, true); assert.equal(h.queries.length, 4);
   assert.match(h.queries[0].text, /code = 'agent'/);
   assert.ok(h.queries[2].values.includes("hashed-password"));
@@ -139,10 +139,10 @@ test("creation commits user and profile together, stores only hash and refreshes
 
 test("creation skips existing usernames and retries concurrent unique conflicts", async () => {
   const existing = harness({ results: [[{ id: 2 }], [{ username: "aperez" }, { username: "aperez1" }], [{ id }], []] });
-  await assert.rejects(existing.actions.createAgent(form()), to("/team/manage?saved=created"));
+  await assert.rejects(existing.actions.createAgent(form()), to("/team?saved=created"));
   assert.ok(existing.queries[2].values.includes("aperez2"));
   const concurrent = harness({ results: [[{ id: 2 }], [], [], [{ id }], []] });
-  await assert.rejects(concurrent.actions.createAgent(form()), to("/team/manage?saved=created"));
+  await assert.rejects(concurrent.actions.createAgent(form()), to("/team?saved=created"));
   assert.ok(concurrent.queries[2].values.includes("aperez"));
   assert.ok(concurrent.queries[3].values.includes("aperez1"));
   assert.match(concurrent.queries[2].text, /on conflict \(lower\(username\)\) where username is not null do nothing/);
@@ -290,7 +290,7 @@ test("integration: real agent lifecycle, duplicates and revoked sessions, rolled
         "@/lib/agent-validation": validation,
       });
       const input = form({ email, last_name: lastName }); input.delete("username");
-      await assert.rejects(actions.createAgent(input), to("/team/manage?saved=created"));
+      await assert.rejects(actions.createAgent(input), to("/team?saved=created"));
       const [agent] = await tx`select u.id, u.username, u.password_hash, u.active, p.first_name, r.code from policyboard.users u
         join policyboard.profiles p on p.user_id = u.id join policyboard.roles r on r.id = u.role_id where u.email = ${email}`;
       assert.equal(agent.code, "agent"); assert.equal(agent.active, true); assert.equal(agent.first_name, "Ana");
@@ -300,12 +300,12 @@ test("integration: real agent lifecycle, duplicates and revoked sessions, rolled
       await tx`update policyboard.users set username = ${username.toUpperCase()} where id = ${agent.id}`;
       for (const number of [1, 2]) {
         const otherEmail = `other${number}-${email}`;
-        await assert.rejects(actions.createAgent(form({ email: otherEmail, last_name: lastName, username: "ignored" })), to("/team/manage?saved=created"));
+        await assert.rejects(actions.createAgent(form({ email: otherEmail, last_name: lastName, username: "ignored" })), to("/team?saved=created"));
         const [other] = await tx`select username from policyboard.users where email = ${otherEmail}`;
         assert.equal(other.username, `${username}${number}`);
       }
       for (const number of [0, 1]) {
-        await assert.rejects(actions.createAgent(form({ email: "", first_name: "NoEmail", last_name: lastName })), to("/team/manage?saved=created"));
+        await assert.rejects(actions.createAgent(form({ email: "", first_name: "NoEmail", last_name: lastName })), to("/team?saved=created"));
         const candidate = validation.usernameCandidate(noEmailUsername, number);
         const [withoutEmail] = await tx`select id, email from policyboard.users where username = ${candidate}`;
         assert.equal(withoutEmail.email, null);

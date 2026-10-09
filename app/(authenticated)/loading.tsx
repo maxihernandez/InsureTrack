@@ -1,12 +1,8 @@
 export default function Loading() {
-  return <section aria-busy="true" aria-label="Loading page">
-    <p role="status" className="mb-5 text-sm text-zinc-600">Loading…</p>
-    <div aria-hidden="true" className="animate-pulse motion-reduce:animate-none">
-      <div className="mb-6 h-8 w-48 rounded bg-zinc-200" />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {[0, 1, 2, 3].map(key => <div key={key} className="h-24 rounded-xl border border-zinc-200 bg-white" />)}
-      </div>
-      <div className="mt-6 h-64 rounded-xl border border-zinc-200 bg-white" />
+  return <section aria-busy="true" aria-label="Loading page" className="flex min-h-[min(50vh,28rem)] items-center justify-center">
+    <div role="status" className="flex flex-col items-center gap-3 text-sm font-medium text-zinc-600">
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="size-9 animate-spin text-emerald-700 motion-reduce:animate-none"><path d="M12 3a9 9 0 1 1-6.4 2.6" /></svg>
+      <span>Loading…</span>
     </div>
   </section>;
 }

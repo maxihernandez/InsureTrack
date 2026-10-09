@@ -12,7 +12,7 @@ const path = "/team/manage";
 async function requireManager() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (user.role !== "manager") redirect("/team");
+  if (user.role !== "manager") redirect("/");
   return user;
 }
 
@@ -23,13 +23,13 @@ function fail(error: unknown): never {
   redirect(`${path}?error=${reason}`);
 }
 
-function finish(message: string) {
+function finish(message: string, destination = path) {
   revalidatePath(path);
   revalidatePath("/team");
   revalidatePath("/team/[id]", "page");
   revalidatePath("/production");
   revalidatePath("/");
-  redirect(`${path}?saved=${message}`);
+  redirect(`${destination}?saved=${message}`);
 }
 
 export async function createAgent(form: FormData) {
@@ -62,7 +62,7 @@ export async function createAgent(form: FormData) {
         values (${agentId}, ${profile.firstName}, ${profile.lastName})`;
     });
   } catch (error) { fail(error); }
-  finish("created");
+  finish("created", "/team");
 }
 
 export async function updateAgent(form: FormData) {

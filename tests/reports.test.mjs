@@ -24,6 +24,10 @@ test("rolling report range contains 12 full calendar months across year boundari
   const range = summary.reportRange("2026-01");
   assert.equal(range.start, "2025-02-01"); assert.equal(range.end, "2026-02-01");
   assert.equal(summary.reportRange("2024-02").start, "2023-03-01");
+  assert.equal(summary.reportRange("2026-01", 3).start, "2025-11-01");
+  assert.equal(summary.reportRange("2026-01", 6).start, "2025-08-01");
+  assert.equal(summary.parseReportRange("3"), 3); assert.equal(summary.parseReportRange("6"), 6);
+  assert.equal(summary.parseReportRange("24"), 12); assert.equal(summary.parseReportRange(undefined), 12);
 });
 
 test("report summary excludes unassigned goals from achievement and handles missing baselines", () => {
@@ -49,6 +53,26 @@ test("report charts handle zero sales and missing goals without invalid SVG coor
   assert.match(renderToStaticMarkup(React.createElement(charts.DistributionChart, { rows: [], total: 0 })), /No production/);
 });
 
+test("report sections use icon tabs and reveal only the selected panel", () => {
+  let selected = 0;
+  const refs = { current: [0, 1, 2].map(() => ({ focus: () => {} })) };
+  const { outputText } = ts.transpileModule(readFileSync(new URL("../app/report-sections.tsx", import.meta.url), "utf8"), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
+  });
+  const testModule = { exports: {} };
+  vm.runInNewContext(outputText, { module: testModule, exports: testModule.exports,
+    require: name => name === "react" ? { ...React, useState: () => [selected, value => { selected = value; }], useId: () => "reports", useRef: () => refs } : require(name) });
+  const render = () => testModule.exports.ReportSections({ trends: "Trend content", distribution: "Distribution content", breakdown: "Breakdown content" });
+  const findRole = (node, role) => !React.isValidElement(node) ? [] : [...(node.props.role === role ? [node] : []), ...React.Children.toArray(node.props.children).flatMap(child => findRole(child, role))];
+  let tree = render();
+  const tabs = findRole(tree, "tab");
+  assert.equal(findRole(tree, "tablist").length, 1); assert.equal(tabs.length, 3);
+  assert.deepEqual(findRole(tree, "tabpanel").map(panel => panel.props.hidden), [false, true, true]);
+  assert.match(renderToStaticMarkup(tree), /<svg/);
+  tabs[1].props.onClick();
+  tree = render();
+  assert.deepEqual(findRole(tree, "tabpanel").map(panel => panel.props.hidden), [true, false, true]);
+});
 test("report queries are bounded, parameterized and do not drop inactive historical accounts", async () => {
   const queries = [];
   const sql = async (parts, ...values) => { queries.push({ text: parts.join("?").replace(/\s+/g, " "), values }); return []; };

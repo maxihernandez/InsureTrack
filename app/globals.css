@@ -17,3 +17,11 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
+/* Text remains selectable; the I-beam is reserved for fields that accept typing. */
+:where(body, body *) {
+  cursor: default;
+}
+
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="button"]):not([type="submit"]):not([type="reset"]), textarea, [contenteditable="true"]) {
+  cursor: text;
+}

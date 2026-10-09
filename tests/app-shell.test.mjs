@@ -33,7 +33,7 @@ test("desktop sidebar stays within viewport with independent menu scrolling and 
   assert.match(aside, /md:h-dvh/);
   assert.match(aside, /md:overflow-hidden/);
   assert.match(html, /aria-label="Main navigation" class="[^"]*min-h-0[^"]*overflow-y-auto[^"]*overscroll-contain/);
-  assert.match(html, /class="[^"]*shrink-0[^"]*border-t[^"]*border-zinc-200[^"]*pt-5/);
+  assert.match(html, /class="[^"]*shrink-0[^"]*border-t[^"]*border-zinc-200[^"]*pt-4/);
   assert.match(html, /aria-label="Unpin sidebar"/);
   assert.match(html, /transition-\[width\]/);
   assert.match(html, /<main[^>]*>.*Page content/);

@@ -8,11 +8,12 @@ import { ProductGoalsSection } from "@/app/product-goals-section";
 import { TeamRanking } from "@/app/team-ranking";
 import { DashboardNotes } from "@/app/dashboard-notes";
 
-type ProductProgress = { id: string; name: string; target_count: number | null; target_amount: string | null; mtd_count: number; ytd_count: number; mtd_premium: string; ytd_premium: string; mtd_amount: string; active: boolean };
+type ProductProgress = { id: string; name: string; target_count: number | null; target_amount: string | null; mtd_count: number; ytd_count: number; mtd_in_force: number; ytd_in_force: number; mtd_premium: string; ytd_premium: string; mtd_amount: string; active: boolean };
 type Ranking = { id: string; name: string; mtd_count: number; ytd_count: number };
 type Activity = { metric_type: string; value: number; target: number | null };
 type DashboardLayout = { product_order: string[]; hidden_product_ids: string[] };
 type DashboardAgent = { id: string; name: string };
+
 const money = (value: string | number) => `$${Number(value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 type SummaryMetric = "mtd-sales" | "monthly-goal" | "ytd-sales" | "mtd-premium";
@@ -46,19 +47,27 @@ export async function DashboardView() {
       with monthly as (
         select product_id, count(*)::int as sale_count, coalesce(sum(premium), 0)::text as premium, coalesce(sum(amount), 0)::text as amount
         from policyboard.sales where sale_date >= ${period.start}::date and sale_date < least(${period.end}::date, current_date + 1) group by product_id
+      ), monthly_in_force as (
+        select product_id, count(*)::int as in_force_count
+        from policyboard.sales where policy_status = 'in_force' and effective_date >= ${period.start}::date and effective_date < least(${period.end}::date, current_date + 1) group by product_id
       ), yearly as (
         select product_id, count(*)::int as sale_count, coalesce(sum(premium), 0)::text as premium
         from policyboard.sales where sale_date >= ${yearStart}::date and sale_date < least(${period.end}::date, current_date + 1) group by product_id
+      ), yearly_in_force as (
+        select product_id, count(*)::int as in_force_count
+        from policyboard.sales where policy_status = 'in_force' and effective_date >= ${yearStart}::date and effective_date < least(${period.end}::date, current_date + 1) group by product_id
       )
       select p.id, p.name, p.active, g.target_count, g.target_amount::text,
-        coalesce(m.sale_count, 0)::int as mtd_count, coalesce(y.sale_count, 0)::int as ytd_count,
+        coalesce(m.sale_count, 0)::int as mtd_count, coalesce(y.sale_count, 0)::int as ytd_count, coalesce(mi.in_force_count, 0)::int as mtd_in_force, coalesce(yi.in_force_count, 0)::int as ytd_in_force,
         coalesce(m.premium, '0') as mtd_premium, coalesce(y.premium, '0') as ytd_premium,
         coalesce(m.amount, '0') as mtd_amount
       from policyboard.products p
       left join policyboard.goals g on g.product_id = p.id and g.year = ${period.year} and g.month = ${period.month}
       left join monthly m on m.product_id = p.id
+      left join monthly_in_force mi on mi.product_id = p.id
       left join yearly y on y.product_id = p.id
-      where p.active or m.product_id is not null or y.product_id is not null
+      left join yearly_in_force yi on yi.product_id = p.id
+      where p.active or m.product_id is not null or mi.product_id is not null or y.product_id is not null or yi.product_id is not null
       order by p.display_order
     `,
     sql<Ranking[]>`
@@ -95,9 +104,9 @@ export async function DashboardView() {
     ` : Promise.resolve([] as DashboardAgent[]),
   ]);
   const mtd = products.reduce((total, p) => total + p.mtd_count, 0);
-  const ytd = products.reduce((total, p) => total + p.ytd_count, 0);
-  const goal = products.reduce((total, p) => total + (p.target_count ?? 0), 0);
-  const premium = products.reduce((total, p) => total + Number(p.mtd_premium), 0);
+  const mtdInForce = products.reduce((total, p) => total + p.mtd_in_force, 0);
+  const monthlyGoal = products.reduce((total, p) => total + (p.target_count ?? 0), 0);
+  const mtdPremium = products.reduce((total, p) => total + Number(p.mtd_premium), 0);
   return <>
     <header className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 shadow-sm sm:px-4">
       <div className="flex min-w-0 items-center gap-3">
@@ -112,7 +121,7 @@ export async function DashboardView() {
       </div>
     </header>
     <section aria-label="Summary" className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-      {[{ label: "MTD sales", description: "Sales recorded this month", value: mtd, metric: "mtd-sales" as const, tone: "bg-emerald-50 text-emerald-800" }, { label: "Monthly goal", description: "Sales target for this month", value: goal, metric: "monthly-goal" as const, tone: "bg-sky-50 text-sky-800" }, { label: "YTD sales", description: "Sales recorded this year", value: ytd, metric: "ytd-sales" as const, tone: "bg-violet-50 text-violet-800" }, { label: "MTD premium", description: "Premium recorded this month", value: money(premium), metric: "mtd-premium" as const, tone: "bg-amber-50 text-amber-800" }].map(item => <div key={item.label} title={item.description} className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm"><span aria-hidden="true" className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${item.tone}`}><SummaryIcon metric={item.metric} /></span><div><p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{item.label}</p><p className="mt-0.5 text-2xl font-semibold tracking-tight tabular-nums text-zinc-950">{item.value}</p></div><span className="sr-only">{item.description}</span></div>)}
+      {[{ label: "Recorded this month", description: "Policies recorded during the current month", value: mtd, metric: "mtd-sales" as const, tone: "bg-emerald-50 text-emerald-800" }, { label: "In force this month", description: "Policies that became effective during the current month", value: mtdInForce, metric: "monthly-goal" as const, tone: "bg-sky-50 text-sky-800" }, { label: "Monthly goal", description: "Sales target for the current month", value: monthlyGoal, metric: "ytd-sales" as const, tone: "bg-violet-50 text-violet-800" }, { label: "Premium this month", description: "Premium recorded during the current month", value: money(mtdPremium), metric: "mtd-premium" as const, tone: "bg-amber-50 text-amber-800" }].map(item => <div key={item.label} title={item.description} className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm"><span aria-hidden="true" className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${item.tone}`}><SummaryIcon metric={item.metric} /></span><div><p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{item.label}</p><p className="mt-0.5 text-2xl font-semibold tracking-tight tabular-nums text-zinc-950">{item.value}</p></div><span className="sr-only">{item.description}</span></div>)}
     </section>
     <DashboardSteps key={periodValue} production={<ProductGoalsSection products={products} editGoalsHref={user.role === "manager" ? `/goals?period=${periodValue}` : undefined} customizable savedLayout={dashboardLayout} isManager={user.role === "manager"} agents={agents} />} ranking={
       <TeamRanking agents={ranking} />

@@ -3,7 +3,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { executeCreateSale } from "@/lib/production/create-sale";
-import { readCreateSale } from "@/lib/production/validation";
+import { updatePolicyStatus } from "@/lib/production/repository";
+import { readCreateSale, readPolicyStatusUpdate } from "@/lib/production/validation";
 export async function addSale(form: FormData) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
@@ -26,4 +27,15 @@ export async function addSaleFromDashboard(form: FormData): Promise<DashboardSal
   revalidatePath("/");
   revalidatePath("/production");
   return { ok: true };
+}
+export async function updatePolicy(form: FormData) {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  if (user.role !== "manager") redirect("/production?policy_error=forbidden");
+  const input = readPolicyStatusUpdate(form);
+  if (!input) redirect("/production?policy_error=invalid");
+  if (!await updatePolicyStatus(input, user.id)) redirect("/production?policy_error=unavailable");
+  revalidatePath("/");
+  revalidatePath("/production");
+  redirect("/production?policy_updated=1");
 }

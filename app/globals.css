@@ -3,6 +3,32 @@
 :root {
   --background: #fafafa;
   --foreground: #18181b;
+
+  /* PolicyBoard palette: white and graphite surfaces with a single red brand accent. */
+  --color-emerald-50: #fff5f5;
+  --color-emerald-100: #fee2e2;
+  --color-emerald-200: #fecaca;
+  --color-emerald-500: #dc2626;
+  --color-emerald-600: #b91c1c;
+  --color-emerald-700: #991b1b;
+  --color-emerald-800: #7f1d1d;
+  --color-emerald-900: #450a0a;
+  --color-emerald-950: #2b0b0b;
+
+  --color-sky-50: #fafafa;
+  --color-sky-100: #f4f4f5;
+  --color-sky-200: #e4e4e7;
+  --color-sky-600: #52525b;
+  --color-sky-800: #27272a;
+  --color-violet-50: #fafafa;
+  --color-violet-100: #f4f4f5;
+  --color-violet-200: #e4e4e7;
+  --color-violet-800: #27272a;
+  --color-amber-50: #fafafa;
+  --color-amber-200: #e4e4e7;
+  --color-amber-800: #52525b;
+  --color-amber-900: #27272a;
+  --color-yellow-800: #52525b;
 }
 
 @theme inline {

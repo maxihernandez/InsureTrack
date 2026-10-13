@@ -7,12 +7,14 @@ import { DashboardSteps } from "@/app/dashboard-steps";
 import { ProductGoalsSection } from "@/app/product-goals-section";
 import { TeamRanking } from "@/app/team-ranking";
 import { DashboardNotes } from "@/app/dashboard-notes";
+import { GoogleReviewsPanel } from "@/app/google-reviews-panel";
 
-type ProductProgress = { id: string; name: string; target_count: number | null; target_amount: string | null; mtd_count: number; ytd_count: number; mtd_in_force: number; ytd_in_force: number; mtd_premium: string; ytd_premium: string; mtd_amount: string; active: boolean };
+type ProductProgress = { id: string; name: string; target_count: number | null; annual_target_count: number | null; mtd_count: number; ytd_count: number; mtd_in_force: number; ytd_in_force: number; mtd_premium: string; ytd_premium: string; active: boolean };
 type Ranking = { id: string; name: string; mtd_count: number; ytd_count: number };
-type Activity = { metric_type: string; value: number; target: number | null };
 type DashboardLayout = { product_order: string[]; hidden_product_ids: string[] };
 type DashboardAgent = { id: string; name: string };
+type GoogleReview = { id: string; user_id: string; agent_name: string; reviewed_on: string; rating: number; excerpt: string | null; review_url: string | null };
+type DashboardPolicy = { id: string; product_id: string; policy_number: string | null; policy_status: "recorded" | "issued" | "in_force" | "not_issued" | "cancelled" | "legacy"; effective_date: string | null; sale_date: string; agent_name: string };
 
 const money = (value: string | number) => `$${Number(value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -42,10 +44,10 @@ export async function DashboardView() {
     // Keep the dashboard available until the additive migration has been applied.
     if (!(error && typeof error === "object" && "code" in error && error.code === "42P01")) throw error;
   }
-  const [products, ranking, activities, agents] = await Promise.all([
+  const [products, ranking, agents, reviews, policies] = await Promise.all([
     sql<ProductProgress[]>`
       with monthly as (
-        select product_id, count(*)::int as sale_count, coalesce(sum(premium), 0)::text as premium, coalesce(sum(amount), 0)::text as amount
+        select product_id, count(*)::int as sale_count, coalesce(sum(premium), 0)::text as premium
         from policyboard.sales where sale_date >= ${period.start}::date and sale_date < least(${period.end}::date, current_date + 1) group by product_id
       ), monthly_in_force as (
         select product_id, count(*)::int as in_force_count
@@ -57,12 +59,12 @@ export async function DashboardView() {
         select product_id, count(*)::int as in_force_count
         from policyboard.sales where policy_status = 'in_force' and effective_date >= ${yearStart}::date and effective_date < least(${period.end}::date, current_date + 1) group by product_id
       )
-      select p.id, p.name, p.active, g.target_count, g.target_amount::text,
+      select p.id, p.name, p.active, g.target_count, ag.target_count as annual_target_count,
         coalesce(m.sale_count, 0)::int as mtd_count, coalesce(y.sale_count, 0)::int as ytd_count, coalesce(mi.in_force_count, 0)::int as mtd_in_force, coalesce(yi.in_force_count, 0)::int as ytd_in_force,
-        coalesce(m.premium, '0') as mtd_premium, coalesce(y.premium, '0') as ytd_premium,
-        coalesce(m.amount, '0') as mtd_amount
+        coalesce(m.premium, '0') as mtd_premium, coalesce(y.premium, '0') as ytd_premium
       from policyboard.products p
       left join policyboard.goals g on g.product_id = p.id and g.year = ${period.year} and g.month = ${period.month}
+      left join policyboard.annual_goals ag on ag.product_id = p.id and ag.year = ${period.year}
       left join monthly m on m.product_id = p.id
       left join monthly_in_force mi on mi.product_id = p.id
       left join yearly y on y.product_id = p.id
@@ -86,14 +88,6 @@ export async function DashboardView() {
       group by u.id, pr.first_name, pr.last_name
       order by mtd_count desc, ytd_count desc, name
     `,
-    sql<Activity[]>`
-      select metric_type,
-        coalesce(max(value) filter (where user_id is null), sum(value) filter (where user_id is not null), 0)::int as value,
-        coalesce(max(target) filter (where user_id is null), sum(target) filter (where user_id is not null))::int as target
-      from policyboard.activity_metrics
-      where year = ${period.year} and month = ${period.month}
-      group by metric_type order by metric_type
-    `,
     user.role === "manager" ? sql<DashboardAgent[]>`
       select u.id, pr.first_name || ' ' || pr.last_name as name
       from policyboard.users u
@@ -102,6 +96,21 @@ export async function DashboardView() {
       where u.active and r.code = 'agent'
       order by pr.last_name, pr.first_name
     ` : Promise.resolve([] as DashboardAgent[]),
+    sql<GoogleReview[]>`
+      select gr.id, gr.user_id, pr.first_name || ' ' || pr.last_name as agent_name, gr.reviewed_on::text, gr.rating, gr.excerpt, gr.review_url
+      from policyboard.google_reviews gr join policyboard.profiles pr on pr.user_id = gr.user_id
+      where ${user.role === "manager"} or gr.user_id = ${user.id}
+      order by gr.reviewed_on desc, gr.created_at desc limit 50
+    `,
+    sql<DashboardPolicy[]>`
+      select s.id, s.product_id, s.policy_number, s.policy_status, s.effective_date::text, s.sale_date::text,
+        pr.first_name || ' ' || pr.last_name as agent_name
+      from policyboard.sales s
+      join policyboard.profiles pr on pr.user_id = s.user_id
+      where s.sale_date >= ${period.start}::date and s.sale_date < least(${period.end}::date, current_date + 1)
+        and (${user.role === "manager"} or s.user_id = ${user.id})
+      order by s.sale_date desc, s.created_at desc limit 100
+    `,
   ]);
   const mtd = products.reduce((total, p) => total + p.mtd_count, 0);
   const mtdInForce = products.reduce((total, p) => total + p.mtd_in_force, 0);
@@ -121,13 +130,11 @@ export async function DashboardView() {
       </div>
     </header>
     <section aria-label="Summary" className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-      {[{ label: "Recorded this month", description: "Policies recorded during the current month", value: mtd, metric: "mtd-sales" as const, tone: "bg-emerald-50 text-emerald-800" }, { label: "In force this month", description: "Policies that became effective during the current month", value: mtdInForce, metric: "monthly-goal" as const, tone: "bg-sky-50 text-sky-800" }, { label: "Monthly goal", description: "Sales target for the current month", value: monthlyGoal, metric: "ytd-sales" as const, tone: "bg-violet-50 text-violet-800" }, { label: "Premium this month", description: "Premium recorded during the current month", value: money(mtdPremium), metric: "mtd-premium" as const, tone: "bg-amber-50 text-amber-800" }].map(item => <div key={item.label} title={item.description} className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm"><span aria-hidden="true" className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${item.tone}`}><SummaryIcon metric={item.metric} /></span><div><p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{item.label}</p><p className="mt-0.5 text-2xl font-semibold tracking-tight tabular-nums text-zinc-950">{item.value}</p></div><span className="sr-only">{item.description}</span></div>)}
+      {[{ label: "Recorded this month", description: "Policies recorded during the current month", value: mtd, metric: "mtd-sales" as const, tone: "bg-emerald-50 text-emerald-800" }, { label: "Active this month", description: "Policies currently active that became effective during the current month", value: mtdInForce, metric: "monthly-goal" as const, tone: "bg-sky-50 text-sky-800" }, { label: "Monthly goal", description: "Sales target for the current month", value: monthlyGoal, metric: "ytd-sales" as const, tone: "bg-violet-50 text-violet-800" }, { label: "Premium this month", description: "Premium recorded during the current month", value: money(mtdPremium), metric: "mtd-premium" as const, tone: "bg-amber-50 text-amber-800" }].map(item => <div key={item.label} title={item.description} className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm"><span aria-hidden="true" className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${item.tone}`}><SummaryIcon metric={item.metric} /></span><div><p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{item.label}</p><p className="mt-0.5 text-2xl font-semibold tracking-tight tabular-nums text-zinc-950">{item.value}</p></div><span className="sr-only">{item.description}</span></div>)}
     </section>
-    <DashboardSteps key={periodValue} production={<ProductGoalsSection products={products} editGoalsHref={user.role === "manager" ? `/goals?period=${periodValue}` : undefined} customizable savedLayout={dashboardLayout} isManager={user.role === "manager"} agents={agents} />} ranking={
+    <DashboardSteps key={periodValue} production={<ProductGoalsSection products={products} policies={policies} editGoalsHref={user.role === "manager" ? `/goals?period=${periodValue}` : undefined} customizable savedLayout={dashboardLayout} isManager={user.role === "manager"} agents={agents} />} ranking={
       <TeamRanking agents={ranking} />
-    } commercial={
-      <section><h2 className="mb-3 text-lg font-semibold">Commercial activity · MTD</h2><div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">{activities.length ? activities.map(a => <div key={a.metric_type} className="flex justify-between border-b border-zinc-100 px-4 py-3 last:border-0"><span>{a.metric_type}</span><span className="font-medium">{a.value}{a.target === null ? "" : ` / ${a.target}`}</span></div>) : <p className="p-4 text-sm text-zinc-600">No activity metrics for this month.</p>}</div></section>
-    } />
+    } reviews={<GoogleReviewsPanel reviews={reviews} agents={user.role === "manager" ? agents : [{ id: user.id, name: user.first_name }]} currentUserId={user.id} isManager={user.role === "manager"} />} />
 
   </>;
 }

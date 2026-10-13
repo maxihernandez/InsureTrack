@@ -18,8 +18,8 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      // This app accepts only small form payloads; reduce the 1 MB default attack surface.
-      bodySizeLimit: "64kb",
+      // Profile photos are capped at 2 MB in the private Storage bucket.
+      bodySizeLimit: "2mb",
     },
   },
   turbopack: {

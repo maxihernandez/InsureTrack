@@ -5,7 +5,7 @@ import { useFormStatus } from "react-dom";
 import { login } from "./actions";
 
 function BrandMark() {
-  return <span className="flex size-12 items-center justify-center rounded-2xl bg-emerald-800 text-sm font-bold tracking-tight text-white shadow-sm">PB</span>;
+  return <span className="flex size-12 items-center justify-center rounded-2xl bg-emerald-800 text-sm font-bold tracking-tight text-white shadow-sm">MT</span>;
 }
 
 function FieldIcon({ type }: { type: "user" | "lock" }) {
@@ -23,7 +23,7 @@ function SubmitButton() {
 
 export function LoginForm({ error }: { error?: string }) {
   return <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl shadow-zinc-200/50 sm:p-8">
-    <div className="mb-7 flex items-center gap-3"><BrandMark /><div><h1 className="text-2xl font-semibold tracking-tight text-zinc-900">PolicyBoard</h1><p className="mt-0.5 text-sm text-zinc-500">Sales performance workspace</p></div></div>
+    <div className="mb-7 flex items-center gap-3"><BrandMark /><div><h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Marianela Team Board</h1><p className="mt-0.5 text-sm text-zinc-500">Sales performance workspace</p></div></div>
     {error && <p role="alert" className="mb-5 flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-4 shrink-0"><circle cx="12" cy="12" r="9" /><path d="M12 8v4m0 4h.01" /></svg>Invalid credentials or temporary lock.</p>}
     <form action={login} className="space-y-5">
       <label className="block text-sm font-medium text-zinc-800">Username<div className="relative mt-1.5"><input className="block w-full rounded-xl border border-zinc-300 bg-white px-3 py-3 pl-11 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100" name="username" type="text" autoComplete="username" autoCapitalize="none" spellCheck={false} minLength={3} maxLength={32} required placeholder="Enter your username" /><span className="pointer-events-none absolute inset-y-0 left-0 flex w-11 items-center justify-center text-zinc-400"><FieldIcon type="user" /></span></div></label>

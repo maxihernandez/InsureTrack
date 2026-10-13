@@ -18,7 +18,7 @@ function load(path, mocks = {}) {
   return testModule.exports;
 }
 const summary = load("../lib/report-summary.ts");
-const month = (key, sales = 0, goal = null, goalSales = 0, premium = "0") => ({ month: key, sales, goal, goal_sales: goalSales, premium, amount: "0" });
+const month = (key, sales = 0, goal = null, goalSales = 0, premium = "0") => ({ month: key, sales, goal, goal_sales: goalSales, premium });
 
 test("rolling report range contains 12 full calendar months across year boundaries", () => {
   const range = summary.reportRange("2026-01");
@@ -86,6 +86,8 @@ test("report queries are bounded, parameterized and do not drop inactive histori
   }
   assert.match(queries[0].text, /generate_series/);
   assert.match(queries[0].text, /count\(\*\) filter \(where g.target_count > 0\)/);
+  assert.match(queries[0].text, /policy_status = 'in_force'/);
+  assert.match(queries[0].text, /effective_date >=/);
 });
 
 test("integration: historical report totals match raw sales; read-only", {

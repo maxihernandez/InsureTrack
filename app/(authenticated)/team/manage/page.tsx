@@ -46,7 +46,7 @@ export default async function ManageAgents({ searchParams }: { searchParams: Pro
   return <>
     <Link href="/team" aria-label="Back to team" title="Back to team" className="inline-flex size-10 items-center justify-center rounded-lg border border-zinc-300 bg-white text-zinc-700 shadow-sm transition-colors hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-5"><path d="M19 12H5m6-6-6 6 6 6" /></svg></Link>
     <div className="mb-6 mt-3"><h1 className="text-2xl font-semibold">Manage agents</h1>
-      <p className="mt-1 text-sm text-zinc-600">Manager only. Agent credentials belong to PolicyBoard, not Supabase Auth.</p></div>
+      <p className="mt-1 text-sm text-zinc-600">Manager only. Agent credentials belong to Marianela Team Board.</p></div>
     {params.error && <p role="alert" className="mb-5 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{errors[params.error] ?? errors.save}</p>}
     {params.saved && <p role="status" className="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{messages[params.saved] ?? "Changes saved."}</p>}
     <section className="mb-8 rounded-xl border border-zinc-200 bg-white p-5">
@@ -57,7 +57,7 @@ export default async function ManageAgents({ searchParams }: { searchParams: Pro
         <summary className="cursor-pointer list-none p-4 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-700">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div><h3 className="font-semibold">{agent.first_name} {agent.last_name}</h3><p className="break-all text-sm text-zinc-600">{agent.email}</p></div>
-          <span className={`rounded-full px-3 py-1 text-xs font-medium ${agent.active ? "bg-emerald-100 text-emerald-900" : "bg-zinc-100 text-zinc-600"}`}>{agent.active ? "Active" : "Inactive"}</span><span aria-hidden="true" className="text-lg leading-none text-zinc-500 transition-transform group-open:rotate-180">⌄</span>
+          <span className={`rounded-full px-3 py-1 text-xs font-medium ${agent.active ? "bg-green-100 text-green-800" : "bg-zinc-100 text-zinc-600"}`}>{agent.active ? "Active" : "Inactive"}</span><span aria-hidden="true" className="text-lg leading-none text-zinc-500 transition-transform group-open:rotate-180">⌄</span>
         </div>
         <p className="mt-2 text-sm font-medium text-emerald-800">{agent.manager_access ? "Agent + Manager" : "Agent"}</p>
         </summary>

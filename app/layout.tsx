@@ -13,17 +13,21 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PolicyBoard",
+  title: "Marianela Team Board",
   description: "Monthly sales goals and production for the team",
-  applicationName: "PolicyBoard",
-  appleWebApp: { capable: true, title: "PolicyBoard", statusBarStyle: "default" },
+  applicationName: "Marianela Team Board",
+  icons: {
+    icon: [{ url: "/icon?brand=mt&v=2", type: "image/png", sizes: "512x512" }],
+    apple: [{ url: "/apple-icon?brand=mt&v=2", type: "image/png", sizes: "180x180" }],
+  },
+  appleWebApp: { capable: true, title: "Marianela Team Board", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#065f46",
+  themeColor: "#ec0c21",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

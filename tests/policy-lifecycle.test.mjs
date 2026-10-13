@@ -21,7 +21,7 @@ const id = "12345678-1234-1234-1234-123456789012";
 
 function saleForm(overrides = {}) {
   const form = new FormData();
-  for (const [key, value] of Object.entries({ product_id: id, sale_date: "2026-10-10", policy_number: " POL-123 ", premium: "", amount: "", notes: "", ...overrides })) form.set(key, value);
+  for (const [key, value] of Object.entries({ product_id: id, sale_date: "2026-10-10", policy_number: " POL-123 ", premium: "", notes: "", ...overrides })) form.set(key, value);
   return form;
 }
 

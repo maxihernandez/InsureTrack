@@ -17,8 +17,8 @@ export type RecentSale = {
 
 export async function createSale(input: CreateSaleInput) {
   const rows = await getDb()<{ id: string }[]>`
-    insert into policyboard.sales (user_id, product_id, policy_number, sale_date, premium, amount, notes)
-    select u.id, p.id, ${input.policyNumber}, ${input.saleDate}::date, ${input.premium}, ${input.amount}, ${input.notes}
+    insert into policyboard.sales (user_id, product_id, policy_number, sale_date, premium, notes)
+    select u.id, p.id, ${input.policyNumber}, ${input.saleDate}::date, ${input.premium}, ${input.notes}
     from policyboard.users u join policyboard.roles r on r.id = u.role_id cross join policyboard.products p
     where u.id = ${input.agentId} and u.active and r.code = 'agent' and p.id = ${input.productId} and p.active
     returning id`;

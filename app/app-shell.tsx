@@ -34,7 +34,6 @@ function LogoutButton({ fullWidth = false, compact = false }: { fullWidth?: bool
 export function AppShell({ user, children }: { user: User; children: React.ReactNode }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
   const current = pathname === "/" ? "dashboard" : pathname.split("/")[1];
   const links = [
     { href: "/", label: "Dashboard", key: "dashboard", icon: "dashboard" as const },
@@ -53,20 +52,19 @@ export function AppShell({ user, children }: { user: User; children: React.React
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900 md:flex">
       <aside className={`group/sidebar hidden shrink-0 border-r border-zinc-200 bg-white p-4 transition-[width] md:sticky md:top-0 md:flex md:h-dvh md:self-start md:flex-col md:overflow-hidden ${collapsed ? "w-20 hover:w-60" : "w-60"}`}>
-        <div className="relative min-h-11 shrink-0">
-          <Link href="/" className={`flex min-h-11 w-full items-center gap-2 text-xl font-bold tracking-tight ${collapsed ? "justify-center group-hover/sidebar:justify-start" : ""}`} aria-label="PolicyBoard home"><span className="flex size-8 items-center justify-center rounded-lg bg-emerald-800 text-sm text-white">PB</span><span className={collapsed ? "hidden whitespace-nowrap group-hover/sidebar:inline" : "whitespace-nowrap"}>PolicyBoard</span></Link>
+        <div className="relative min-h-12 shrink-0">
+          <Link href="/" className={`flex min-h-12 w-full items-center gap-3 ${collapsed ? "justify-center pr-0 group-hover/sidebar:justify-start group-hover/sidebar:pr-11" : "pr-11"}`} aria-label="Marianela Team Board home"><span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-800 text-xs font-bold tracking-tight text-white">MT</span><span className={`min-w-0 leading-none ${collapsed ? "hidden group-hover/sidebar:block" : "block"}`}><span className="block truncate text-base font-bold tracking-tight text-zinc-950">Marianela</span><span className="mt-1 block text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500">Team Board</span></span></Link>
           <button type="button" onClick={() => setCollapsed(value => !value)} aria-label={collapsed ? "Pin sidebar open" : "Unpin sidebar"} title={collapsed ? "Pin sidebar open" : "Unpin sidebar"} className={`absolute right-0 top-0 inline-flex size-11 items-center justify-center rounded-lg text-zinc-600 transition-opacity hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 ${collapsed ? "pointer-events-none opacity-0 group-hover/sidebar:pointer-events-auto group-hover/sidebar:opacity-100" : ""}`}><Icon name={collapsed ? "pin" : "pin-filled"} /></button>
         </div>
         <nav aria-label="Main navigation" className="mt-5 min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain">{links.map(link => navLink(link))}</nav>
-        <div className={`relative flex shrink-0 border-t border-zinc-200 pt-4 ${collapsed ? "flex-col items-center gap-2 group-hover/sidebar:flex-row group-hover/sidebar:justify-center" : "items-center justify-center gap-2"}`}>
-          <button type="button" onClick={() => setProfileOpen(open => !open)} aria-label="View profile" aria-expanded={profileOpen} title="View profile" className="inline-flex size-11 shrink-0 items-center justify-center rounded-full border border-emerald-100 bg-emerald-50 text-emerald-800 shadow-sm transition-colors hover:bg-emerald-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"><Icon name="profile" /></button>
-          {profileOpen && <div className={`absolute bottom-14 left-0 z-30 w-48 rounded-xl border border-zinc-200 bg-white p-3 shadow-lg ${collapsed ? "hidden group-hover/sidebar:block" : ""}`}><div className="flex items-center gap-2"><span className="flex size-8 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-900">{user.first_name.slice(0, 1).toUpperCase()}</span><div className="min-w-0"><p className="truncate text-sm font-semibold text-zinc-900">{user.first_name}</p><span className="mt-1 inline-flex rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium capitalize text-zinc-600">{user.role}</span></div></div></div>}
-          <form action={logout} className="flex justify-center"><LogoutButton compact /></form>
+        <div className={`flex shrink-0 border-t border-zinc-200 pt-4 ${collapsed ? "flex-col items-center gap-2 group-hover/sidebar:flex-row group-hover/sidebar:justify-center" : "items-center gap-2"}`}>
+          <Link href="/profile" aria-label="Manage profile" title="Manage profile" className={`inline-flex min-h-11 shrink-0 items-center rounded-lg border border-emerald-100 bg-emerald-50 text-emerald-800 shadow-sm transition-colors hover:bg-emerald-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 ${collapsed ? "size-11 justify-center group-hover/sidebar:w-auto group-hover/sidebar:gap-2 group-hover/sidebar:px-3" : "min-w-0 flex-1 gap-2 px-3"}`}><Icon name="profile" /><span className={collapsed ? "hidden whitespace-nowrap group-hover/sidebar:inline" : "truncate text-sm font-semibold"}>Profile</span></Link>
+          <form action={logout} className="flex shrink-0 justify-center"><LogoutButton compact /></form>
         </div>
       </aside>
       <div className="min-w-0 flex-1">
         <header className="flex items-center justify-between border-b border-zinc-200 bg-white px-4 py-4 md:hidden">
-          <Link href="/" className="text-lg font-bold">PolicyBoard</Link>
+          <Link href="/" className="text-lg font-bold">Marianela Team Board</Link>
           <form action={logout}><LogoutButton /></form>
         </header>
         <main className="mx-auto max-w-6xl px-4 py-6 pb-28 sm:px-6 md:pb-8">{children}</main>

@@ -4,16 +4,16 @@
   --background: #fafafa;
   --foreground: #18181b;
 
-  /* PolicyBoard palette: white and graphite surfaces with a single red brand accent. */
+  /* MarianelaTeamBoard palette: white and graphite surfaces with a single red brand accent. */
   --color-emerald-50: #fff5f5;
   --color-emerald-100: #fee2e2;
   --color-emerald-200: #fecaca;
-  --color-emerald-500: #dc2626;
-  --color-emerald-600: #b91c1c;
-  --color-emerald-700: #991b1b;
-  --color-emerald-800: #7f1d1d;
-  --color-emerald-900: #450a0a;
-  --color-emerald-950: #2b0b0b;
+  --color-emerald-500: #ec0c21;
+  --color-emerald-600: #d70b1e;
+  --color-emerald-700: #c6091a;
+  --color-emerald-800: #ec0c21;
+  --color-emerald-900: #a80916;
+  --color-emerald-950: #3d050a;
 
   --color-sky-50: #fafafa;
   --color-sky-100: #f4f4f5;
@@ -50,4 +50,34 @@ body {
 
 :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="button"]):not([type="submit"]):not([type="reset"]), textarea, [contenteditable="true"]) {
   cursor: text;
+}
+
+/* Compact the product-detail modal without reducing the dashboard cards themselves. */
+[role="dialog"][aria-labelledby^="product-summary-"] > dl {
+  margin-top: 0.75rem;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+}
+
+[role="dialog"][aria-labelledby^="product-summary-"] > dl > div {
+  padding: 0.5rem;
+}
+
+[role="dialog"][aria-labelledby^="product-summary-"] > dl dd {
+  margin-top: 0.125rem;
+  font-size: 1rem;
+}
+
+[role="dialog"][aria-labelledby^="product-summary-"] > section {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+}
+
+[role="dialog"][aria-labelledby^="product-summary-"] > section ul {
+  margin-top: 0.5rem;
+  gap: 0.5rem;
+}
+
+[role="dialog"][aria-labelledby^="product-summary-"] > section li {
+  padding: 0.5rem;
 }

@@ -1,5 +1,5 @@
 export type ReportMonth = {
-  month: string; sales: number; premium: string; amount: string; goal: number | null; goal_sales: number;
+  month: string; sales: number; premium: string; goal: number | null; goal_sales: number;
 };
 export type ReportBreakdown = { id: string; name: string; sales: number; premium: string };
 

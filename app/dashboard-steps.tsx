@@ -9,8 +9,8 @@ function StepIcon({ index }: { index: number }) {
   return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-4">{graphic}</svg>;
 }
 
-export function DashboardSteps({ production, ranking, commercial, enabled = true }: {
-  production: ReactNode; ranking: ReactNode; commercial: ReactNode; enabled?: boolean;
+export function DashboardSteps({ production, ranking, reviews, enabled = true }: {
+  production: ReactNode; ranking: ReactNode; reviews?: ReactNode; enabled?: boolean;
 }) {
   const [selected, setSelected] = useState(0);
   const id = useId();
@@ -18,9 +18,9 @@ export function DashboardSteps({ production, ranking, commercial, enabled = true
   const steps = [
     { label: "Product goals", content: production },
     { label: "Team ranking", content: ranking },
-    { label: "Commercial activity", content: commercial },
+    ...(reviews ? [{ label: "Google reviews", content: reviews }] : []),
   ];
-  if (!enabled) return <>{production}<div className="mt-6 grid gap-4 lg:grid-cols-2">{ranking}{commercial}</div></>;
+  if (!enabled) return <>{production}<div className="mt-6">{ranking}</div>{reviews && <div className="mt-6">{reviews}</div>}</>;
 
   function select(index: number) {
     setSelected(index);
@@ -29,7 +29,7 @@ export function DashboardSteps({ production, ranking, commercial, enabled = true
 
   return <div className="mt-5">
     <div role="tablist" aria-label="Dashboard sections" className="flex items-center rounded-xl border border-zinc-200 bg-white p-1.5 shadow-sm sm:p-2">
-      {steps.map((step, index) => <div key={step.label} role="presentation" className="flex min-w-0 flex-1 items-center last:flex-none last:w-1/3">
+      {steps.map((step, index) => <div key={step.label} role="presentation" className="flex min-w-0 flex-1 items-center">
         <button type="button" role="tab" id={`${id}-tab-${index}`} aria-controls={`${id}-panel-${index}`}
           aria-selected={selected === index} tabIndex={selected === index ? 0 : -1}
           ref={element => { buttons.current[index] = element; }}

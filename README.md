@@ -1,4 +1,4 @@
-# PolicyBoard
+# Marianela Team Board
 
 Internal sales performance MVP for one insurance agency. It tracks monthly goals, production, team ranking, commercial activity, and history. It does not store customer or policy records.
 

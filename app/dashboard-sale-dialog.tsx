@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
 import { addSaleFromDashboard } from "@/app/(authenticated)/production/actions";
 
 type Agent = { id: string; name: string };
 type Product = { id: string; name: string };
 
 export function DashboardSaleDialog({ product, isManager, agents, compact = false }: { product: Product; isManager: boolean; agents: Agent[]; compact?: boolean }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,8 +18,7 @@ export function DashboardSaleDialog({ product, isManager, agents, compact = fals
     const result = await addSaleFromDashboard(new FormData(event.currentTarget));
     setPending(false);
     if (!result.ok) { setError(result.message); return; }
-    setOpen(false);
-    router.refresh();
+    window.location.reload();
   }
 
   return <>
@@ -33,7 +30,7 @@ export function DashboardSaleDialog({ product, isManager, agents, compact = fals
           {isManager && <label className="block text-sm font-medium">Agent<select name="agent_id" required defaultValue="" className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2"><option value="" disabled>Select agent</option>{agents.map(agent => <option key={agent.id} value={agent.id}>{agent.name}</option>)}</select></label>}
           <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"><span className="font-semibold">Product:</span> {product.name}</div>
           <label className="block text-sm font-medium">Policy number<input name="policy_number" required maxLength={100} autoComplete="off" placeholder="Enter policy number" className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2" /></label><label className="block text-sm font-medium">Recorded date<input name="sale_date" type="date" required defaultValue={new Date().toISOString().slice(0, 10)} className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2" /></label>
-          <fieldset className="grid gap-3 border-t border-zinc-100 pt-4 sm:grid-cols-2"><legend className="px-0 text-sm font-semibold">Optional financial details</legend><label className="block text-sm font-medium">Premium<input name="premium" type="number" min="0" step="0.01" placeholder="Optional" className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2" /></label><label className="block text-sm font-medium">Amount<input name="amount" type="number" min="0" step="0.01" placeholder="Optional" className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2" /></label></fieldset>
+          <fieldset className="border-t border-zinc-100 pt-4"><legend className="px-0 text-sm font-semibold">Optional financial details</legend><label className="mt-3 block text-sm font-medium">Policy premium<input name="premium" type="number" min="0" step="0.01" placeholder="Optional" className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2" /></label></fieldset>
           <label className="block text-sm font-medium">Notes<textarea name="notes" maxLength={2000} rows={3} placeholder="Optional" className="mt-1 w-full resize-y rounded-lg border border-zinc-300 px-3 py-2" /></label>
           {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
           <div className="flex justify-end gap-2"><button type="button" onClick={() => setOpen(false)} disabled={pending} className="min-h-10 rounded-lg border border-zinc-300 px-3 text-sm font-semibold text-zinc-700 hover:bg-zinc-100 disabled:opacity-50">Cancel</button><button disabled={pending} className="min-h-10 rounded-lg bg-emerald-800 px-4 text-sm font-semibold text-white hover:bg-emerald-900 disabled:opacity-50">{pending ? "Saving policy..." : "Save policy"}</button></div>

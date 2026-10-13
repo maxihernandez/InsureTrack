@@ -9,7 +9,6 @@ export type CreateSaleInput = {
   policyNumber: string;
   saleDate: string;
   premium: string | null;
-  amount: string | null;
   notes: string | null;
 };
 
@@ -42,10 +41,9 @@ export function readCreateSale(form: FormData, agentId: string): CreateSaleInput
   const policyNumber = policyNumberValue(form.get("policy_number"));
   const saleDate = isoDate(form.get("sale_date"));
   const premium = moneyValue(form.get("premium"));
-  const amount = moneyValue(form.get("amount"));
   const notes = String(form.get("notes") ?? "").trim();
-  if (!isUuid(productId) || !isUuid(agentId) || policyNumber === undefined || saleDate === undefined || saleDate === null || premium === undefined || amount === undefined || notes.length > 2000) return null;
-  return { productId, agentId, policyNumber, saleDate, premium, amount, notes: notes || null };
+  if (!isUuid(productId) || !isUuid(agentId) || policyNumber === undefined || saleDate === undefined || saleDate === null || premium === undefined || notes.length > 2000) return null;
+  return { productId, agentId, policyNumber, saleDate, premium, notes: notes || null };
 }
 
 export function readPolicyStatusUpdate(form: FormData): PolicyStatusUpdateInput | null {

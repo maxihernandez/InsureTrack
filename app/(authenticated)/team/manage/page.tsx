@@ -8,6 +8,7 @@ import { resetAgentPassword, setAgentStatus, setAgentManagerAccess, updateAgent 
 import { SubmitButton } from "./submit-button";
 import { ProfileFields } from "./profile-fields";
 import { CreateAgentStepper } from "./create-agent-stepper";
+import { pinColorValue } from "@/lib/pin-colors";
 
 export const instant = false;
 
@@ -15,6 +16,7 @@ const inputClass = "mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 
 const errors: Record<string, string> = {
   invalid: "Complete all fields correctly. Username: 3–32 letters, digits, dots, underscores or hyphens, starting with a letter/digit. Passwords must match and contain 12–128 characters.",
   duplicate: "That username or email is already registered. Use another or edit the existing agent.",
+  colors: "All 30 agent colors are assigned. Add another color before creating a new agent.",
   missing: "The agent is unavailable or you no longer have permission. Activate the agent before enabling manager access, then refresh the page.",
   save: "The changes could not be saved. Please try again.",
 };
@@ -56,7 +58,7 @@ export default async function ManageAgents({ searchParams }: { searchParams: Pro
     <section aria-label="Selected agent"><div className="space-y-3">{selectedAgentId ? agents.filter(agent => agent.id === selectedAgentId).map(agent => <details id={`agent-${agent.id}`} open={selectedAgentId === agent.id} key={`${agent.id}:${agent.username}:${agent.email}:${agent.active}:${agent.manager_access}:${agent.first_name}:${agent.last_name}`} className="group rounded-xl border border-zinc-200 bg-white">
         <summary className="cursor-pointer list-none p-4 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-700">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div><h3 className="font-semibold">{agent.first_name} {agent.last_name}</h3><p className="break-all text-sm text-zinc-600">{agent.email}</p></div>
+          <div className="flex items-center gap-3"><span aria-label={`Pin color ${agent.pin_color}`} className="flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white" style={{ backgroundColor: pinColorValue(agent.pin_color) }}>{agent.first_name.charAt(0)}{agent.last_name.charAt(0)}</span><div><h3 className="font-semibold">{agent.first_name} {agent.last_name}</h3><p className="break-all text-sm text-zinc-600">{agent.email}</p></div></div>
           <span className={`rounded-full px-3 py-1 text-xs font-medium ${agent.active ? "bg-green-100 text-green-800" : "bg-zinc-100 text-zinc-600"}`}>{agent.active ? "Active" : "Inactive"}</span><span aria-hidden="true" className="text-lg leading-none text-zinc-500 transition-transform group-open:rotate-180">⌄</span>
         </div>
         <p className="mt-2 text-sm font-medium text-emerald-800">{agent.manager_access ? "Agent + Manager" : "Agent"}</p>

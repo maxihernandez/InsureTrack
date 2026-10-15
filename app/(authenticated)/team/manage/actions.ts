@@ -18,7 +18,7 @@ async function requireManager() {
 
 function fail(error: unknown): never {
   const code = error && typeof error === "object" && "code" in error ? error.code : undefined;
-  const reason = code === "23505" ? "duplicate" : error instanceof Error && error.message === "agent-not-found" ? "missing" : "save";
+  const reason = code === "23505" ? "duplicate" : error instanceof Error && error.message === "agent-not-found" ? "missing" : error instanceof Error && error.message === "agent-color-allocation-exhausted" ? "colors" : "save";
   // Never expose SQL errors, parameters or password hashes to the client/logs.
   redirect(`${path}?error=${reason}`);
 }
@@ -28,6 +28,7 @@ function finish(message: string, destination = path) {
   revalidatePath("/team");
   revalidatePath("/team/[id]", "page");
   revalidatePath("/production");
+  revalidatePath("/board");
   revalidatePath("/");
   redirect(`${destination}?saved=${message}`);
 }
@@ -42,7 +43,17 @@ export async function createAgent(form: FormData) {
     await withTransaction(async tx => {
       const roles = await tx<{ id: number }[]>`select id from policyboard.roles where code = 'agent'`;
       if (!roles[0]) throw new Error("agent-role-missing");
+      // Serialize only color allocation. The partial unique index remains the database-level guard.
+      await tx`select pg_advisory_xact_lock(hashtext('policyboard.agent-pin-colors'))`;
       const existing = await tx<{ username: string }[]>`select lower(username) as username from policyboard.users where username is not null`;
+      const availableColors = await tx<{ pin_color: number }[]>`
+        select color::smallint as pin_color
+        from generate_series(1, 30) as color
+        where not exists (select 1 from policyboard.profiles p where p.pin_color = color)
+        order by color
+        limit 1`;
+      const pinColor = availableColors[0]?.pin_color;
+      if (!pinColor) throw new Error("agent-color-allocation-exhausted");
       const used = new Set(existing.map(row => row.username));
       let agentId: string | undefined;
       for (let number = 0; number < 10_000; number++) {
@@ -58,8 +69,8 @@ export async function createAgent(form: FormData) {
         used.add(username);
       }
       if (!agentId) throw new Error("username-allocation-exhausted");
-      await tx`insert into policyboard.profiles (user_id, first_name, last_name)
-        values (${agentId}, ${profile.firstName}, ${profile.lastName})`;
+      await tx`insert into policyboard.profiles (user_id, first_name, last_name, pin_color)
+        values (${agentId}, ${profile.firstName}, ${profile.lastName}, ${pinColor})`;
     });
   } catch (error) { fail(error); }
   finish("created", "/team");

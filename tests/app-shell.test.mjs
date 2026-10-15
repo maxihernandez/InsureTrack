@@ -47,11 +47,13 @@ test("logout is an accessible submit button and manager navigation is restricted
   assert.match(manager, /min-h-11/);
   assert.match(manager, /focus-visible:outline-2/);
   assert.match(manager, /href="\/goals"/);
+  assert.match(manager, /href="\/board"/);
   assert.match(manager, /href="\/team" aria-current="page"/);
   assert.doesNotMatch(manager, /href="\/production"/);
   const agent = renderShell("agent");
   assert.doesNotMatch(agent, /href="\/team"/);
   assert.doesNotMatch(agent, /href="\/history"/);
   assert.doesNotMatch(agent, /href="\/goals"/);
+  assert.match(agent, /href="\/board"/);
   assert.match(manager, /aria-label="Mobile navigation"/);
 });

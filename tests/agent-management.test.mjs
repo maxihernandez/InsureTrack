@@ -125,28 +125,37 @@ test("manager access preserves the base role and atomically revokes sessions", a
   await assert.rejects(missing.actions.setAgentManagerAccess(form({ access: "enabled", confirm: "yes" })), to("/team/manage?error=missing"));
   assert.equal(missing.rolledBack, true);
 });
-test("creation commits user and profile together, stores only hash and refreshes production", async () => {
-  const h = harness({ results: [[{ id: 2 }], [], [{ id }], []] });
+test("creation commits user and profile together, assigns an available pin color, stores only hash and refreshes production", async () => {
+  const h = harness({ results: [[{ id: 2 }], [], [], [{ pin_color: 1 }], [{ id }], []] });
   await assert.rejects(h.actions.createAgent(form()), to("/team?saved=created"));
-  assert.equal(h.committed, true); assert.equal(h.queries.length, 4);
+  assert.equal(h.committed, true); assert.equal(h.queries.length, 6);
   assert.match(h.queries[0].text, /code = 'agent'/);
-  assert.ok(h.queries[2].values.includes("hashed-password"));
-  assert.ok(h.queries[2].values.includes("aperez"));
+  assert.match(h.queries[1].text, /pg_advisory_xact_lock/);
+  assert.match(h.queries[3].text, /generate_series\(1, 30\)/);
+  assert.ok(h.queries[4].values.includes("hashed-password"));
+  assert.ok(h.queries[4].values.includes("aperez"));
+  assert.ok(h.queries[5].values.includes(1));
   assert.ok(h.queries.every(q => !q.values.includes("Ana.Perez")));
   assert.ok(h.queries.every(q => !q.values.includes("LongPassword-2026")));
   assert.ok(h.invalidations.includes("/production"));
 });
 
 test("creation skips existing usernames and retries concurrent unique conflicts", async () => {
-  const existing = harness({ results: [[{ id: 2 }], [{ username: "aperez" }, { username: "aperez1" }], [{ id }], []] });
+  const existing = harness({ results: [[{ id: 2 }], [], [{ username: "aperez" }, { username: "aperez1" }], [{ pin_color: 1 }], [{ id }], []] });
   await assert.rejects(existing.actions.createAgent(form()), to("/team?saved=created"));
-  assert.ok(existing.queries[2].values.includes("aperez2"));
-  const concurrent = harness({ results: [[{ id: 2 }], [], [], [{ id }], []] });
+  assert.ok(existing.queries[4].values.includes("aperez2"));
+  const concurrent = harness({ results: [[{ id: 2 }], [], [], [{ pin_color: 1 }], [], [{ id }], []] });
   await assert.rejects(concurrent.actions.createAgent(form()), to("/team?saved=created"));
-  assert.ok(concurrent.queries[2].values.includes("aperez"));
-  assert.ok(concurrent.queries[3].values.includes("aperez1"));
-  assert.match(concurrent.queries[2].text, /on conflict \(lower\(username\)\) where username is not null do nothing/);
+  assert.ok(concurrent.queries[4].values.includes("aperez"));
+  assert.ok(concurrent.queries[5].values.includes("aperez1"));
+  assert.match(concurrent.queries[4].text, /on conflict \(lower\(username\)\) where username is not null do nothing/);
   assert.equal(concurrent.committed, true);
+});
+test("creation fails without creating an account when the color palette is exhausted", async () => {
+  const h = harness({ results: [[{ id: 2 }], [], [], []] });
+  await assert.rejects(h.actions.createAgent(form()), to("/team/manage?error=colors"));
+  assert.equal(h.queries.length, 4);
+  assert.equal(h.rolledBack, true);
 });
 test("duplicate email rolls back without exposing SQL details", async () => {
   const h = harness({ error: { code: "23505" } });

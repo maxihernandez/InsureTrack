@@ -7,11 +7,12 @@ import { useFormStatus } from "react-dom";
 import { logout } from "@/app/login/actions";
 
 type User = { first_name: string; role: string };
-type IconName = "dashboard" | "team" | "reports" | "goals" | "profile" | "pin" | "pin-filled" | "logout";
+type IconName = "dashboard" | "board" | "team" | "reports" | "goals" | "profile" | "pin" | "pin-filled" | "logout";
 
 function Icon({ name }: { name: IconName }) {
   const paths: Record<IconName, React.ReactNode> = {
     dashboard: <><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></>,
+    board: <><rect x="3" y="4" width="18" height="16" rx="1" /><path d="M3 9h18M8 9v11m5-11v11m5-11v11" /><circle cx="5.5" cy="6.5" r=".8" fill="currentColor" stroke="none" /><circle cx="11" cy="6.5" r=".8" fill="currentColor" stroke="none" /><circle cx="16.5" cy="6.5" r=".8" fill="currentColor" stroke="none" /></>,
     team: <><circle cx="9" cy="8" r="3" /><circle cx="17" cy="9" r="2.5" /><path d="M3.5 20c.4-3.1 2.4-5 5.5-5s5.1 1.9 5.5 5M15 15.5c2.8-.3 4.8 1.1 5.2 4" /></>,
     reports: <><path d="M6 3h9l3 3v15H6V3Z" /><path d="M15 3v4h4M9 11h6M9 15h6M9 19h4" /></>,
     goals: <><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3" /><path d="M12 2v3m0 14v3M2 12h3m14 0h3" /></>,
@@ -37,6 +38,7 @@ export function AppShell({ user, children }: { user: User; children: React.React
   const current = pathname === "/" ? "dashboard" : pathname.split("/")[1];
   const links = [
     { href: "/", label: "Dashboard", key: "dashboard", icon: "dashboard" as const },
+    { href: "/board", label: "Board", key: "board", icon: "board" as const },
     ...(user.role === "manager" ? [
       { href: "/team", label: "Team", key: "team", icon: "team" as const },
       { href: "/history", label: "Reports", key: "history", icon: "reports" as const },
